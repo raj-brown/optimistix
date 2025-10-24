@@ -43,6 +43,7 @@ from ._solver import (
     AbstractGradientDescent as AbstractGradientDescent,
     AbstractLBFGS as AbstractLBFGS,
     AbstractQuasiNewton as AbstractQuasiNewton,
+    AbstractSSBFGS as AbstractSSBFGS,
     BacktrackingArmijo as BacktrackingArmijo,
     BestSoFarFixedPoint as BestSoFarFixedPoint,
     BestSoFarLeastSquares as BestSoFarLeastSquares,
@@ -76,6 +77,7 @@ from ._solver import (
     NonlinearCGDescent as NonlinearCGDescent,
     OptaxMinimiser as OptaxMinimiser,
     polak_ribiere as polak_ribiere,
+    SSBFGS as SSBFGS,
     SteepestDescent as SteepestDescent,
 )
 

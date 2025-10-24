@@ -37,7 +37,7 @@ def test_minimise():
     def fn(y, _):
         return 0.5 * (y - jnp.tanh(y + 1)) ** 2
 
-    solver = optx.BFGS(rtol=1e-6, atol=1e-6)
+    solver = optx.SSBFGS(rtol=1e-6, atol=1e-6)
     solver = optx.BestSoFarMinimiser(solver)
     sol = optx.minimise(fn, solver, jnp.array(0.0))
     assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
