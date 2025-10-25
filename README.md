@@ -1,6 +1,6 @@
 <h1 align='center'>Optimistix</h1>
 
-Optimistix is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
+This library is include two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and  developed on top of Optimistix, which is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
 
 Features include:
 
@@ -14,7 +14,7 @@ Features include:
 ## Installation
 
 ```bash
-pip install optimistix
+pip install https://github.com/raj-brown/optimistix.git
 ```
 
 Requires Python 3.10+ and JAX 0.4.38+ and [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+.
@@ -45,7 +45,22 @@ y1 = sol.value  # satisfies y1 == fn(y1)
 
 ## Citation
 
-If you found this library to be useful in academic work, then please cite: ([arXiv link](https://arxiv.org/abs/2402.09983))
+If you found this library to be useful in academic work, then please cite: ([Journal Paper][https://www.sciencedirect.com/science/article/pii/S0045782525005808])
+
+
+```bibtex
+@article{kiyani2025optimizing,
+  title={Optimizing the optimizer for physics-informed neural networks and Kolmogorov-Arnold networks},
+  author={Kiyani, Elham and Shukla, Khemraj and Urb{\'a}n, Jorge F and Darbon, J{\'e}r{\^o}me and Karniadakis, George Em},
+  journal={Computer Methods in Applied Mechanics and Engineering},
+  volume={446},
+  pages={118308},
+  year={2025},
+  publisher={Elsevier}
+}
+```
+
+Also for Optimistix library please cite: ([arXiv link](https://arxiv.org/abs/2402.09983))
 
 ```bibtex
 @article{optimistix2024,
@@ -56,28 +71,11 @@ If you found this library to be useful in academic work, then please cite: ([arX
 }
 ```
 
-## See also: other libraries in the JAX ecosystem
 
-**Always useful**  
-[Equinox](https://github.com/patrick-kidger/equinox): neural networks and everything not already in core JAX!  
-[jaxtyping](https://github.com/patrick-kidger/jaxtyping): type annotations for shape/dtype of arrays.  
-
-**Deep learning**  
-[Optax](https://github.com/deepmind/optax): first-order gradient (SGD, Adam, ...) optimisers.  
-[Orbax](https://github.com/google/orbax): checkpointing (async/multi-host/multi-device).  
-[Levanter](https://github.com/stanford-crfm/levanter): scalable+reliable training of foundation models (e.g. LLMs).  
-[paramax](https://github.com/danielward27/paramax): parameterizations and constraints for PyTrees.  
-
-**Scientific computing**  
-[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.  
-[Lineax](https://github.com/patrick-kidger/lineax): linear solvers.  
-[BlackJAX](https://github.com/blackjax-devs/blackjax): probabilistic+Bayesian sampling.  
-[sympy2jax](https://github.com/patrick-kidger/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.  
-[PySR](https://github.com/milesCranmer/PySR): symbolic regression. (Non-JAX honourable mention!)  
-
-**Awesome JAX**  
-[Awesome JAX](https://github.com/n2cholas/awesome-jax): a longer list of other JAX projects.  
 
 ## Credit
 
 Optimistix was primarily built by Jason Rader (@packquickly): [Twitter](https://twitter.com/packquickly); [GitHub](https://github.com/packquickly); [Website](https://www.packquickly.com/).
+
+
+[https://www.sciencedirect.com/science/article/pii/S0045782525005808]: https://www.sciencedirect.com/science/article/pii/S0045782525005808
