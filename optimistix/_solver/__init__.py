@@ -43,9 +43,11 @@ from .quasi_newton import (
     AbstractDFP as AbstractDFP,
     AbstractQuasiNewton as AbstractQuasiNewton,
     AbstractSSBFGS as AbstractSSBFGS,
+    AbstractSSBroyden as AbstractSSBroyden,
     BFGS as BFGS,
     DFP as DFP,
     SSBFGS as SSBFGS,
+    SSBroyden as SSBroyden,
 )
 from .trust_region import (
     ClassicalTrustRegion as ClassicalTrustRegion,

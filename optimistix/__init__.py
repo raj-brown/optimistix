@@ -78,6 +78,7 @@ from ._solver import (
     OptaxMinimiser as OptaxMinimiser,
     polak_ribiere as polak_ribiere,
     SSBFGS as SSBFGS,
+    SSBroyden as SSBroyden,
     SteepestDescent as SteepestDescent,
 )
 
