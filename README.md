@@ -1,15 +1,7 @@
-<h1 align='center'>Optimistix</h1>
+<h1 align='center'>SS-Quasi-Newton-Optimistix</h1>
 
-This library is include two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and  developed on top of Optimistix, which is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
+This library includes two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and  developed on top of Optimistix, which is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
 
-Features include:
-
-- interoperable solvers: e.g. autoconvert root find problems to least squares problems, then solve using a minimisation algorithm.
-- modular optimisers: e.g. use a BFGS quadratic bowl with a dogleg descent path with a trust region update.
-- using a PyTree as the state.
-- fast compilation and runtimes.
-- interoperability with [Optax](https://github.com/deepmind/optax).
-- all the benefits of working with JAX: autodiff, autoparallelism, GPU/TPU support etc.
 
 ## Installation
 
