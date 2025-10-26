@@ -157,6 +157,7 @@ class AbstractQuasiNewton(
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: HessianUpdateState,
+        step_size,
     ) -> tuple[_Hessian, HessianUpdateState]:
         """Update the Hessian approximation.
 
@@ -228,6 +229,7 @@ class AbstractQuasiNewton(
                 state.f_info,
                 FunctionInfo.EvalGrad(f_eval, grad),
                 state.hessian_update_state,
+                step_size,
             )
 
             descent_state = self.descent.query(
@@ -347,6 +349,7 @@ class AbstractBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: None,
+        step_size,
     ) -> tuple[_Hessian, None]:
         f_eval = f_eval_info.f
         grad = f_eval_info.grad
@@ -506,6 +509,7 @@ class AbstractDFP(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: None,
+        step_size,
     ) -> tuple[_Hessian, None]:
         f_eval = f_eval_info.f
         grad = f_eval_info.grad
@@ -667,12 +671,14 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: None,
+        step_size,
     ) -> tuple[_Hessian, None]:
         f_eval = f_eval_info.f
         grad = f_eval_info.grad
         y_diff = (y_eval**ω - y**ω).ω
         grad_diff = (grad**ω - f_info.grad**ω).ω
         inner = tree_dot(grad_diff, y_diff)
+        prev_grad = f_info.grad
 
         # In particular inner = 0 on the first step (as then state.grad=0), and so for
         # this we jump straight to the line search.
@@ -699,11 +705,27 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 mvp_outer = _outer(y_diff, inv_mvp)
                 term1 = (((inner + mvp_inner) * (diff_outer**ω)) / (inner**2)).ω
                 term2 = ((_outer(inv_mvp, y_diff) ** ω + mvp_outer**ω) / inner).ω
+                v = (y_diff**ω / inner - inv_mvp**ω / mvp_inner).ω
+
+                v = jax.tree_map(lambda x: (mvp_inner**1 / 2) * x, v)
+                t1 = _outer(inv_mvp, inv_mvp)
+                t2 = _outer(v, v)
+                t = (t2**ω - t1**ω / mvp_inner).ω
+                t3 = (diff_outer**ω / inner).ω
+                term3 = tree_dot(grad_diff, y_diff)
+                term4 = tree_dot(y_diff, prev_grad)
+                term4 = jax.tree_map(lambda x: x * step_size, term4)
+                tau_k_val = -term3 / term4
+                tau_k = jax.lax.cond(
+                    tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
+                )
+                hessian_temp = (hessian_inv**ω / tau_k + t**ω / tau_k + t3**ω).ω
                 new_hessian_inv = lx.PyTreeLinearOperator(
-                    (hessian_inv.pytree**ω + term1**ω - term2**ω).ω,  # pyright: ignore
-                    output_structure=jax.eval_shape(lambda: grad_diff),
+                    hessian_temp,
+                    output_structure=jax.eval_shape(lambda: prev_grad),
                     tags=lx.positive_semidefinite_tag,
                 )
+
                 return new_hessian_inv
             else:
                 assert isinstance(f_info, FunctionInfo.EvalGradHessian)
@@ -712,8 +734,17 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 mvp = hessian.mv(y_diff)
                 term1 = (_outer(grad_diff, grad_diff) ** ω / inner).ω
                 term2 = (_outer(mvp, mvp) ** ω / tree_dot(y_diff, mvp)).ω
+
+                term3 = tree_dot(grad_diff, y_diff)
+                term4 = tree_dot(y_diff, prev_grad)
+                term4 = jax.tree_map(lambda x: x * step_size, term4)
+                tau_k_val = -term3 / term4
+                tau_k = jax.lax.cond(
+                    tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
+                )
+                hessian_temp = (hessian**ω / tau_k - term2**ω / tau_k + term1**ω).ω
                 new_hessian = lx.PyTreeLinearOperator(
-                    (hessian.pytree**ω + term1**ω - term2**ω).ω,  # pyright: ignore
+                    hessian_temp,  # pyright: ignore
                     output_structure=jax.eval_shape(lambda: grad_diff),
                     tags=lx.positive_semidefinite_tag,
                 )
@@ -828,6 +859,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: None,
+        step_size,
     ) -> tuple[_Hessian, None]:
         f_eval = f_eval_info.f
         grad = f_eval_info.grad
