@@ -60,7 +60,6 @@ def test_minimise_SSBFGS_with_no_inv():
     solver = optx.SSBFGS(rtol=1e-6, atol=1e-6, use_inverse=False)
     solver = optx.BestSoFarMinimiser(solver)
     sol = optx.minimise(fn, solver, jnp.array(0.0))
-    print(f"Sol: {sol.value}")
     assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
 
 

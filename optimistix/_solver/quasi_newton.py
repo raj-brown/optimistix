@@ -376,6 +376,7 @@ class AbstractBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 assert isinstance(f_info, FunctionInfo.EvalGradHessianInv)
                 hessian_inv = f_info.hessian_inv
                 # Use Woodbury identity for rank-1 update of approximate Hessian.
+                # jax.debug.print("in BFGS Update")
                 inv_mvp = hessian_inv.mv(grad_diff)
                 mvp_inner = tree_dot(grad_diff, inv_mvp)
                 diff_outer = _outer(y_diff, y_diff)
@@ -707,19 +708,20 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 term2 = ((_outer(inv_mvp, y_diff) ** ω + mvp_outer**ω) / inner).ω
                 v = (y_diff**ω / inner - inv_mvp**ω / mvp_inner).ω
 
-                v = jax.tree_map(lambda x: (mvp_inner**1 / 2) * x, v)
+                v = jax.tree_util.tree_map(lambda x: (mvp_inner**1 / 2) * x, v)
                 t1 = _outer(inv_mvp, inv_mvp)
                 t2 = _outer(v, v)
                 t = (t2**ω - t1**ω / mvp_inner).ω
                 t3 = (diff_outer**ω / inner).ω
                 term3 = tree_dot(grad_diff, y_diff)
                 term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_map(lambda x: x * step_size, term4)
+                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
                 tau_k_val = -term3 / term4
                 tau_k = jax.lax.cond(
                     tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
                 )
-                hessian_temp = (hessian_inv**ω / tau_k + t**ω / tau_k + t3**ω).ω
+                # jax.debug.print("tau val: {}", tau_k)
+                hessian_temp = (hessian_inv.pytree**ω / tau_k + t**ω / tau_k + t3**ω).ω  # pyright: ignore
                 new_hessian_inv = lx.PyTreeLinearOperator(
                     hessian_temp,
                     output_structure=jax.eval_shape(lambda: prev_grad),
@@ -730,19 +732,21 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
             else:
                 assert isinstance(f_info, FunctionInfo.EvalGradHessian)
                 hessian = f_info.hessian
-                # BFGS update to the operator directly
                 mvp = hessian.mv(y_diff)
                 term1 = (_outer(grad_diff, grad_diff) ** ω / inner).ω
                 term2 = (_outer(mvp, mvp) ** ω / tree_dot(y_diff, mvp)).ω
-
                 term3 = tree_dot(grad_diff, y_diff)
                 term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_map(lambda x: x * step_size, term4)
+                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
                 tau_k_val = -term3 / term4
                 tau_k = jax.lax.cond(
                     tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
                 )
-                hessian_temp = (hessian**ω / tau_k - term2**ω / tau_k + term1**ω).ω
+                tau_k = 1 / tau_k
+                # jax.debug.print("tau val from inverse: {}", tau_k)
+                hessian_temp = (
+                    hessian.pytree**ω / (tau_k) - term2**ω / (tau_k) + term1**ω  # pyright: ignore
+                ).ω
                 new_hessian = lx.PyTreeLinearOperator(
                     hessian_temp,  # pyright: ignore
                     output_structure=jax.eval_shape(lambda: grad_diff),
@@ -767,7 +771,7 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
             return FunctionInfo.EvalGradHessian(f_eval, grad, hessian), None  # pyright: ignore
 
 
-class SSBFGS(AbstractBFGS[Y, Aux, _Hessian]):
+class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
     """SSBFGS (Self-Scaled-Broyden–Fletcher–Goldfarb–Shanno) minimisation algorithm.
 
     This is a quasi-Newton optimisation algorithm, whose defining feature is the way
@@ -929,7 +933,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
             return FunctionInfo.EvalGradHessian(f_eval, grad, hessian), None  # pyright: ignore
 
 
-class SSBroyden(AbstractBFGS[Y, Aux, _Hessian]):
+class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
     """SSBFGS (Self-Scaled-Broyden–Fletcher–Goldfarb–Shanno) minimisation algorithm.
 
     This is a quasi-Newton optimisation algorithm, whose defining feature is the way
