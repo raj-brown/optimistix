@@ -20,19 +20,16 @@ Available at [https://docs.kidger.site/optimistix](https://docs.kidger.site/opti
 ```python
 import jax.numpy as jnp
 import optimistix as optx
+y0 = jnp.array(0.0)
 
-# Let's solve the ODE dy/dt=tanh(y(t)) with the implicit Euler method.
-# We need to find y1 s.t. y1 = y0 + tanh(y1)dt.
+def fn(y, _):
+        return 0.5 * (y - jnp.tanh(y + 1)) ** 2
 
-y0 = jnp.array(1.)
-dt = jnp.array(0.1)
-
-def fn(y, args):
-    return y0 + jnp.tanh(y) * dt
-
-solver = optx.Newton(rtol=1e-5, atol=1e-5)
-sol = optx.fixed_point(fn, solver, y0)
-y1 = sol.value  # satisfies y1 == fn(y1)
+solver = optx.SSBFGS(rtol=1e-5, atol=1e-5)
+solver = optx.BestSoFarMinimiser(solver)
+sol = optx.minimise(fn, solver, jnp.array(0.0))
+assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
+print("Assertion was successful!")
 ```
 
 ## Citation
