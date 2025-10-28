@@ -707,8 +707,8 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 term1 = (((inner + mvp_inner) * (diff_outer**ω)) / (inner**2)).ω
                 term2 = ((_outer(inv_mvp, y_diff) ** ω + mvp_outer**ω) / inner).ω
                 v = (y_diff**ω / inner - inv_mvp**ω / mvp_inner).ω
+                v = ((mvp_inner**0.5) * v**ω).ω
 
-                v = jax.tree_util.tree_map(lambda x: (mvp_inner**1 / 2) * x, v)
                 t1 = _outer(inv_mvp, inv_mvp)
                 t2 = _outer(v, v)
                 t = (t2**ω - t1**ω / mvp_inner).ω
@@ -900,8 +900,8 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 term2 = ((_outer(inv_mvp, y_diff) ** ω + mvp_outer**ω) / inner).ω
 
                 # Compute v_k
-                v_k = (y_diff**ω / inner - inv_mvp**ω / mvp_inner).ω
-                v_k = jax.tree_util.tree_map(lambda x: (mvp_inner**1 / 2) * x, v_k)
+                v_k = ((y_diff**ω / inner) - (inv_mvp**ω / mvp_inner)).ω
+                v_k = ((mvp_inner**0.5) * v_k**ω).ω
 
                 # Compute \tau_{k^1}
                 t1 = _outer(inv_mvp, inv_mvp)
@@ -942,28 +942,38 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                     theta_k_neg, jnp.minimum(theta_k_pos, (1 - b_k) / b_k)
                 )
 
+                # \rho_k_pos
+                rho_k_pos = jnp.minimum(1.0, 1.0 / b_k)
+
                 # \sigma_k
                 sigma_k = 1 + a_k * theta_k
 
+                N = 1 - num_elements if num_elements > 1 else 0
+
+                # \sigma_k^(1-N)
+                sigma_k_n = jnp.abs(sigma_k) ** (1.0 / (1 - N))
+
                 # \phi_k
                 ## TOD: Fix for undefined variable
-                phi_k_1 = (1.0 - theta_k) / (1 + a_k * theta_k)
-                true_branch = lambda theta_k: tau_k_1 * jnp.minimum(
-                    sigma_k ** (-1 / (num_elements)), 1 / theta_k
+                phi_k = (1.0 - theta_k) / (1 + a_k * theta_k)
+
+                true_branch_theta = lambda theta_k: rho_k_pos * jnp.minimum(
+                    sigma_k_n ** (1 - num_elements), 1 / theta_k
                 )
-                false_branch = lambda theta_k: jnp.minimum(
-                    tau_k_1 * sigma_k ** (-1 / (num_elements)), sigma_k
+                false_branch_theta = lambda theta_k: jnp.minimum(
+                    rho_k_pos * sigma_k ** (1 - num_elements), sigma_k
                 )
-                tau_k_2 = jax.lax.cond(  # pyright: ignore
+                tau_k = filter_cond(  # pyright: ignore
                     theta_k > 0,
-                    true_branch,
-                    false_branch,
+                    true_branch_theta,
+                    false_branch_theta,
                     theta_k,  # pyright: ignore
                 )  # pyright: ignore
 
+                # jax.debug.print("tau_k: {}",tau_k)
                 ## TODO Fix Hessian and Hessian Inverse
                 hessian_temp = (
-                    hessian_inv.pytree**ω / tau_k_1 + t**ω / tau_k_2 * phi_k_1 + t3**ω  # pyright: ignore
+                    hessian_inv.pytree**ω / tau_k_1 + t**ω / tau_k * phi_k + t3**ω  # pyright: ignore
                 ).ω  # pyright: ignore
                 new_hessian_inv = lx.PyTreeLinearOperator(
                     hessian_temp,
