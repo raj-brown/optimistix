@@ -870,6 +870,8 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
         y_diff = (y_eval**ω - y**ω).ω
         grad_diff = (grad**ω - f_info.grad**ω).ω
         inner = tree_dot(grad_diff, y_diff)
+        prev_grad = f_info.grad
+        num_elements = sum(x.size for x in jax.tree_util.tree_leaves(y_diff))
 
         # In particular inner = 0 on the first step (as then state.grad=0), and so for
         # this we jump straight to the line search.
@@ -896,11 +898,79 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 mvp_outer = _outer(y_diff, inv_mvp)
                 term1 = (((inner + mvp_inner) * (diff_outer**ω)) / (inner**2)).ω
                 term2 = ((_outer(inv_mvp, y_diff) ** ω + mvp_outer**ω) / inner).ω
+
+                # Compute v_k
+                v_k = (y_diff**ω / inner - inv_mvp**ω / mvp_inner).ω
+                v_k = jax.tree_util.tree_map(lambda x: (mvp_inner**1 / 2) * x, v_k)
+
+                # Compute \tau_{k^1}
+                t1 = _outer(inv_mvp, inv_mvp)
+                t2 = _outer(v_k, v_k)
+                t = (t2**ω - t1**ω / mvp_inner).ω
+                t3 = (diff_outer**ω / inner).ω
+                term3 = tree_dot(grad_diff, y_diff)
+                term4 = tree_dot(y_diff, prev_grad)
+                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
+                tau_k_val = -term3 / term4
+                tau_k_1 = jax.lax.cond(
+                    tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
+                )
+
+                ### b_k
+                b_k = 1 / tau_k_val
+
+                ## h_k
+                h_k = mvp_inner / term3
+
+                ## a_k
+                a_k = jnp.abs(h_k * b_k - 1)
+
+                # c_k
+                c_k = jnp.sqrt((a_k) / (a_k + 1))
+
+                # rho_k_neg
+                rho_k_neg = jnp.minimum(1.0, h_k * (1 - c_k))
+
+                # \theta_k_neg
+                theta_k_neg = (rho_k_neg - 1) / a_k
+
+                # # \theta_k_pos
+                theta_k_pos = 1 / rho_k_neg
+
+                # #\theta_k
+                theta_k = jnp.maximum(
+                    theta_k_neg, jnp.minimum(theta_k_pos, (1 - b_k) / b_k)
+                )
+
+                # \sigma_k
+                sigma_k = 1 + a_k * theta_k
+
+                # \phi_k
+                ## TOD: Fix for undefined variable
+                phi_k_1 = (1.0 - theta_k) / (1 + a_k * theta_k)
+                true_branch = lambda theta_k: tau_k_1 * jnp.minimum(
+                    sigma_k ** (-1 / (num_elements)), 1 / theta_k
+                )
+                false_branch = lambda theta_k: jnp.minimum(
+                    tau_k_1 * sigma_k ** (-1 / (num_elements)), sigma_k
+                )
+                tau_k_2 = jax.lax.cond(  # pyright: ignore
+                    theta_k > 0,
+                    true_branch,
+                    false_branch,
+                    theta_k,  # pyright: ignore
+                )  # pyright: ignore
+
+                ## TODO Fix Hessian and Hessian Inverse
+                hessian_temp = (
+                    hessian_inv.pytree**ω / tau_k_1 + t**ω / tau_k_2 * phi_k_1 + t3**ω  # pyright: ignore
+                ).ω  # pyright: ignore
                 new_hessian_inv = lx.PyTreeLinearOperator(
-                    (hessian_inv.pytree**ω + term1**ω - term2**ω).ω,  # pyright: ignore
-                    output_structure=jax.eval_shape(lambda: grad_diff),
+                    hessian_temp,
+                    output_structure=jax.eval_shape(lambda: prev_grad),
                     tags=lx.positive_semidefinite_tag,
                 )
+
                 return new_hessian_inv
             else:
                 assert isinstance(f_info, FunctionInfo.EvalGradHessian)
