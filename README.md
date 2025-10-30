@@ -6,7 +6,7 @@ This library includes two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and 
 ## Installation
 
 ```bash
-pip install https://github.com/raj-brown/optimistix.git
+pip install git+https://github.com/raj-brown/optimistix.git
 ```
 
 Requires Python 3.10+ and JAX 0.4.38+ and [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+.

@@ -44,6 +44,7 @@ from ._solver import (
     AbstractLBFGS as AbstractLBFGS,
     AbstractQuasiNewton as AbstractQuasiNewton,
     AbstractSSBFGS as AbstractSSBFGS,
+    AbstractSSBroyden as AbstractSSBroyden,
     BacktrackingArmijo as BacktrackingArmijo,
     BestSoFarFixedPoint as BestSoFarFixedPoint,
     BestSoFarLeastSquares as BestSoFarLeastSquares,
