@@ -888,9 +888,9 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 assert isinstance(f_info, FunctionInfo.EvalGradHessianInv)
                 hessian_inv = f_info.hessian_inv
                 # Use Woodbury identity for rank-1 update of approximate Hessian.
-                inv_mvp = hessian_inv.mv(grad_diff)
-                mvp_inner = tree_dot(grad_diff, inv_mvp)
-                diff_outer = _outer(y_diff, y_diff)
+                inv_mvp = hessian_inv.mv(grad_diff)  # H^-1 * y_k
+                mvp_inner = tree_dot(grad_diff, inv_mvp)  # y_k^T H^-1 * y_k
+                diff_outer = _outer(y_diff, y_diff)  # y_k * y_k^T
 
                 # Compute v_k
                 v_k = ((y_diff**ω / inner) - (inv_mvp**ω / mvp_inner)).ω
@@ -947,10 +947,10 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 phi_k = (1.0 - theta_k) / (1 + a_k * theta_k)
 
                 true_branch_theta = lambda theta_k: rho_k_pos * jnp.minimum(
-                    sigma_k_n ** (1 - num_elements), 1 / theta_k
+                    sigma_k_n, 1 / theta_k
                 )
                 false_branch_theta = lambda theta_k: jnp.minimum(
-                    rho_k_pos * sigma_k ** (1 - num_elements), sigma_k
+                    rho_k_pos * sigma_k, sigma_k
                 )
                 tau_k = filter_cond(  # pyright: ignore
                     theta_k > 0,
@@ -961,6 +961,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
 
                 # jax.debug.print("tau_k: {}",tau_k)
                 t = (t2**ω / (1 / phi_k) - t1**ω / mvp_inner).ω
+
                 hessian_temp = (
                     hessian_inv.pytree**ω / tau_k + t**ω / tau_k + t3**ω  # pyright: ignore
                 ).ω  # pyright: ignore
