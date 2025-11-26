@@ -937,7 +937,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 # \sigma_k
                 sigma_k = 1 + a_k * theta_k
 
-                N = 1 - num_elements if num_elements > 1 else 0
+                N = num_elements if num_elements > 1 else 0
 
                 # \sigma_k^(1-N)
                 sigma_k_n = jnp.abs(sigma_k) ** (1.0 / (1 - N))
