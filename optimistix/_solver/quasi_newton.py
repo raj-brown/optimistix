@@ -950,8 +950,9 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                     sigma_k_n, 1 / theta_k
                 )
                 false_branch_theta = lambda theta_k: jnp.minimum(
-                    rho_k_pos * sigma_k, sigma_k
+                    rho_k_pos * sigma_k_n, sigma_k
                 )
+                jax.debug.print("Fix tauk")
                 tau_k = filter_cond(  # pyright: ignore
                     theta_k > 0,
                     true_branch_theta,
