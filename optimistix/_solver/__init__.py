@@ -1,4 +1,7 @@
-from .backtracking import BacktrackingArmijo as BacktrackingArmijo
+from .backtracking import (
+    BacktrackingArmijo as BacktrackingArmijo,
+    BacktrackingStrongWolfe as BacktrackingStrongWolfe,
+)
 from .best_so_far import (
     BestSoFarFixedPoint as BestSoFarFixedPoint,
     BestSoFarLeastSquares as BestSoFarLeastSquares,

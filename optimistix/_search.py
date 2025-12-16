@@ -345,6 +345,8 @@ class AbstractSearch(eqx.Module, Generic[Y, _FnInfo, _FnEvalInfo, SearchState]):
         y_eval: Y,
         f_info: _FnInfo,
         f_eval_info: _FnEvalInfo,
+        lin_fn,
+        options,
         state: SearchState,
     ) -> tuple[Scalar, Bool[Array, ""], RESULTS, SearchState]:
         """Performs a step within a search. For example, one step within a line search.

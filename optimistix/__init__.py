@@ -46,6 +46,7 @@ from ._solver import (
     AbstractSSBFGS as AbstractSSBFGS,
     AbstractSSBroyden as AbstractSSBroyden,
     BacktrackingArmijo as BacktrackingArmijo,
+    BacktrackingStrongWolfe as BacktrackingStrongWolfe,
     BestSoFarFixedPoint as BestSoFarFixedPoint,
     BestSoFarLeastSquares as BestSoFarLeastSquares,
     BestSoFarMinimiser as BestSoFarMinimiser,

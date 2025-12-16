@@ -28,7 +28,7 @@ from .._search import (
     FunctionInfo,
 )
 from .._solution import RESULTS
-from .backtracking import BacktrackingArmijo
+from .backtracking import BacktrackingArmijo, BacktrackingStrongWolfe
 from .gauss_newton import NewtonDescent
 
 
@@ -217,6 +217,8 @@ class AbstractQuasiNewton(
             state.y_eval,
             state.f_info,
             FunctionInfo.Eval(f_eval),
+            lin_fn,
+            options,
             state.search_state,
         )
 
@@ -806,7 +808,6 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        # TODO(raderj): switch out `BacktrackingArmijo` with a better line search.
         self.search = BacktrackingArmijo()
         self.verbose = verbose
 
@@ -952,7 +953,6 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 false_branch_theta = lambda theta_k: jnp.minimum(
                     rho_k_pos * sigma_k_n, sigma_k
                 )
-                jax.debug.print("Fix tauk")
                 tau_k = filter_cond(  # pyright: ignore
                     theta_k > 0,
                     true_branch_theta,
@@ -1095,7 +1095,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
     norm: Callable[[PyTree], Scalar]
     use_inverse: bool
     descent: NewtonDescent
-    search: BacktrackingArmijo
+    search: BacktrackingStrongWolfe
     verbose: frozenset[str]
 
     def __init__(
@@ -1111,8 +1111,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        # TODO(raderj): switch out `BacktrackingArmijo` with a better line search.
-        self.search = BacktrackingArmijo()
+        self.search = BacktrackingStrongWolfe()
         self.verbose = verbose
 
 
