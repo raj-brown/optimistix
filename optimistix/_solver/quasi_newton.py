@@ -30,6 +30,7 @@ from .._search import (
 from .._solution import RESULTS
 from .backtracking import BacktrackingArmijo, BacktrackingStrongWolfe
 from .gauss_newton import NewtonDescent
+from .trust_region import LinearTrustRegion
 
 
 _Hessian = TypeVar(
@@ -620,7 +621,6 @@ class DFP(AbstractDFP[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        # TODO(raderj): switch out `BacktrackingArmijo` with a better line search.
         self.search = BacktrackingArmijo()
         self.verbose = verbose
 
@@ -792,7 +792,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
     norm: Callable[[PyTree], Scalar]
     use_inverse: bool
     descent: NewtonDescent
-    search: BacktrackingArmijo
+    search: LinearTrustRegion
     verbose: frozenset[str]
 
     def __init__(
@@ -808,7 +808,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        self.search = BacktrackingArmijo()
+        self.search = LinearTrustRegion()  # BacktrackingArmijo()
         self.verbose = verbose
 
 

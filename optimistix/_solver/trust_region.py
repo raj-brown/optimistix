@@ -81,8 +81,12 @@ class _AbstractTrustRegion(AbstractSearch[Y, _FnInfo, _FnEvalInfo, _TrustRegionS
         y_eval: Y,
         f_info: _FnInfo,
         f_eval_info: _FnEvalInfo,
+        lin_fn,
+        options,
         state: _TrustRegionState,
     ) -> tuple[Scalar, Bool[Array, ""], RESULTS, _TrustRegionState]:
+        del lin_fn, options
+
         y_diff = (y_eval**ω - y**ω).ω
         predicted_reduction = self.predict_reduction(y_diff, f_info)
         # We never actually compute the ratio
