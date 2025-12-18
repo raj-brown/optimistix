@@ -82,6 +82,7 @@ from ._solver import (
     SSBFGS as SSBFGS,
     SSBroyden as SSBroyden,
     SteepestDescent as SteepestDescent,
+    Zoom as Zoom,
 )
 
 

@@ -30,7 +30,7 @@ from .._search import (
 from .._solution import RESULTS
 from .backtracking import BacktrackingArmijo, BacktrackingStrongWolfe
 from .gauss_newton import NewtonDescent
-from .trust_region import LinearTrustRegion
+from .zoom import Zoom
 
 
 _Hessian = TypeVar(
@@ -792,7 +792,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
     norm: Callable[[PyTree], Scalar]
     use_inverse: bool
     descent: NewtonDescent
-    search: LinearTrustRegion
+    search: Zoom  # BacktrackingArmijo
     verbose: frozenset[str]
 
     def __init__(
@@ -808,7 +808,9 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        self.search = LinearTrustRegion()  # BacktrackingArmijo()
+        self.search = Zoom(
+            initial_guess_strategy="one"
+        )  # LinearTrustRegion()  # BacktrackingArmijo()
         self.verbose = verbose
 
 

@@ -56,3 +56,4 @@ from .trust_region import (
     ClassicalTrustRegion as ClassicalTrustRegion,
     LinearTrustRegion as LinearTrustRegion,
 )
+from .zoom import Zoom as Zoom
