@@ -894,8 +894,6 @@ class Zoom(AbstractSearch[Y, _FnInfo, _FnEvalInfo, ZoomState], strict=True):
             self._step, y, y_eval, f_info, f_eval_info, lin_fn, options
         )
 
-        jax.debug.print("In zoom line search!")
-
         accept, state = jax.lax.cond(
             first_step,
             _fake_first_step_fn,

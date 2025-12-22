@@ -28,7 +28,7 @@ from .._search import (
     FunctionInfo,
 )
 from .._solution import RESULTS
-from .backtracking import BacktrackingArmijo, BacktrackingStrongWolfe
+from .backtracking import BacktrackingArmijo
 from .gauss_newton import NewtonDescent
 from .zoom import Zoom
 
@@ -890,7 +890,6 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
             if self.use_inverse:
                 assert isinstance(f_info, FunctionInfo.EvalGradHessianInv)
                 hessian_inv = f_info.hessian_inv
-                # Use Woodbury identity for rank-1 update of approximate Hessian.
                 inv_mvp = hessian_inv.mv(grad_diff)  # H^-1 * y_k
                 mvp_inner = tree_dot(grad_diff, inv_mvp)  # y_k^T H^-1 * y_k
                 diff_outer = _outer(y_diff, y_diff)  # y_k * y_k^T
@@ -899,7 +898,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 v_k = ((y_diff**ω / inner) - (inv_mvp**ω / mvp_inner)).ω
                 v_k = ((mvp_inner**0.5) * v_k**ω).ω
 
-                # Compute \tau_{k^1}
+                # Compute \tau_{k^1}: Check
                 t1 = _outer(inv_mvp, inv_mvp)
                 t2 = _outer(v_k, v_k)
                 t3 = (diff_outer**ω / inner).ω
@@ -963,7 +962,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 )  # pyright: ignore
 
                 # jax.debug.print("tau_k: {}",tau_k)
-                t = (t2**ω / (1 / phi_k) - t1**ω / mvp_inner).ω
+                t = (t2**ω / (1 / (phi_k * mvp_inner)) - t1**ω / mvp_inner).ω
 
                 hessian_temp = (
                     hessian_inv.pytree**ω / tau_k + t**ω / tau_k + t3**ω  # pyright: ignore
@@ -1097,7 +1096,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
     norm: Callable[[PyTree], Scalar]
     use_inverse: bool
     descent: NewtonDescent
-    search: BacktrackingStrongWolfe
+    search: BacktrackingArmijo
     verbose: frozenset[str]
 
     def __init__(
@@ -1113,7 +1112,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
         self.norm = norm
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
-        self.search = BacktrackingStrongWolfe()
+        self.search = BacktrackingArmijo()
         self.verbose = verbose
 
 
