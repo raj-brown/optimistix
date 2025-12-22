@@ -121,7 +121,7 @@ class BacktrackingStrongWolfe(
     """Perform a backtracking strong wolfe line search."""
 
     decrease_factor: ScalarLike = 0.8
-    slope: ScalarLike = 1e-3
+    slope: ScalarLike = 1e-4
     step_init: ScalarLike = 1.0
     curve_tol: ScalarLike = 0.9
 
@@ -206,6 +206,8 @@ class BacktrackingStrongWolfe(
         wolfe_decrease = jnp.abs(slope_step) <= self.curve_tol * jnp.abs(slope_init)
 
         accept = first_step | (satisfies_armijo & wolfe_decrease & has_reduction)
+        # accept = first_step | (wolfe_decrease & has_reduction)
+
         step_size = jnp.where(
             accept, self.step_init, self.decrease_factor * state.step_size
         )

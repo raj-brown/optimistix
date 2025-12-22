@@ -896,7 +896,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
 
                 # Compute v_k
                 v_k = ((y_diff**ω / inner) - (inv_mvp**ω / mvp_inner)).ω
-                v_k = ((mvp_inner**0.5) * v_k**ω).ω
+                # v_k = ((mvp_inner**0.5) * v_k**ω).ω
 
                 # Compute \tau_{k^1}: Check
                 t1 = _outer(inv_mvp, inv_mvp)
@@ -945,7 +945,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 sigma_k_n = jnp.abs(sigma_k) ** (1.0 / (1 - N))
 
                 # \phi_k
-                ## TOD: Fix for undefined variable
+                ## TODO: Fix for undefined variable
                 phi_k = (1.0 - theta_k) / (1 + a_k * theta_k)
 
                 true_branch_theta = lambda theta_k: rho_k_pos * jnp.minimum(
