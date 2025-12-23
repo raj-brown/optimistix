@@ -962,7 +962,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 )  # pyright: ignore
 
                 # jax.debug.print("tau_k: {}",tau_k)
-                t = (t2**ω / (1 / (phi_k * mvp_inner)) - t1**ω / mvp_inner).ω
+                t = (t2**ω / (1 / (phi_k)) - t1**ω / mvp_inner).ω
 
                 hessian_temp = (
                     hessian_inv.pytree**ω / tau_k + t**ω / tau_k + t3**ω  # pyright: ignore
