@@ -896,7 +896,7 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
 
                 # Compute v_k
                 v_k = ((y_diff**ω / inner) - (inv_mvp**ω / mvp_inner)).ω
-                # v_k = ((mvp_inner**0.5) * v_k**ω).ω
+                v_k = ((mvp_inner**0.5) * v_k**ω).ω
 
                 # Compute \tau_{k^1}: Check
                 t1 = _outer(inv_mvp, inv_mvp)
