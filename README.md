@@ -6,7 +6,13 @@ This library includes two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and 
 ## Installation
 
 ```bash
-pip install git+https://github.com/raj-brown/optimistix.git
+pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/
+
+
+
+
+```bash
+pip install git+https://github.com/raj-brown/optimistix.git@SSBFGS
 ```
 
 Requires Python 3.10+ and JAX 0.4.38+ and [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+.
