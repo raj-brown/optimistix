@@ -80,17 +80,14 @@ https://www.sciencedirect.com/science/article/pii/S0045782525005808
 
 ---
 
-## Turbulence Closure and Flow Inference Paper
+## Curvature-aware optimization for high-accuracy physics-informed neural networks
 
 ```bibtex
-@article{zhang2026turbulence,
-  title={Turbulence closure in Reynolds-averaged Navier--Stokes and flow inference around a cylinder using physics-informed neural networks and sparse experimental data},
-  author={Zhang, Zhen and Shukla, Khemraj and Wang, Zhicheng and Morales, Anthony and K{\"a}ufer, Theo and Salauddin, Sheikh and Walters, Nathan and Barrett, David and Ahmed, Kareem and Triantafyllou, Michael S and others},
-  journal={Journal of Fluid Mechanics},
-  volume={1034},
-  pages={A16},
-  year={2026},
-  publisher={Cambridge University Press}
+@article{jnini2026curvature,
+  title={Curvature-aware optimization for high-accuracy physics-informed neural networks},
+  author={Jnini, Anas and Kiyani, Elham and Shukla, Khemraj and Urban, Jorge F and Daryakenari, Nazanin Ahmadi and Muller, Johannes and Zeinhofer, Marius and Karniadakis, George Em},
+  journal={arXiv preprint arXiv:2604.05230},
+  year={2026}
 }
 ```
 
