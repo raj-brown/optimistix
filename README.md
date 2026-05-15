@@ -1,47 +1,67 @@
-<h1 align='center'>SS-Quasi-Newton-Optimistix</h1>
+<h1 align="center">SS-Quasi-Newton-Optimistix</h1>
 
-This library includes two quasi-Newton optimizer i.e., SSBFGS and SSBroyden and  developed on top of Optimistix, which is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
+This library provides two quasi-Newton optimizers — **SSBFGS** and **SSBroyden** — developed on top of [Optimistix](https://github.com/patrick-kidger/optimistix), a [JAX](https://github.com/google/jax)-based library for nonlinear solvers including root finding, minimization, fixed-point problems, and least-squares optimization.
 
+---
 
-## Installation
+# Installation
+
+## Install JAX (CUDA 12)
 
 ```bash
-pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/
+pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt \
+  -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/
+```
 
-
-
+## Install SS-Quasi-Newton-Optimistix
 
 ```bash
 pip install git+https://github.com/raj-brown/optimistix.git@SSBFGS
 ```
 
-Requires Python 3.10+ and JAX 0.4.38+ and [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+.
+## Requirements
 
-## Documentation
+- Python 3.10+
+- JAX 0.4.38+
+- [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+
 
-Available at [https://docs.kidger.site/optimistix](https://docs.kidger.site/optimistix).
+---
 
-## Quick example
+# Documentation
+
+The Optimistix documentation is available at:
+
+👉 https://docs.kidger.site/optimistix
+
+---
+
+# Quick Example
 
 ```python
 import jax.numpy as jnp
 import optimistix as optx
-y0 = jnp.array(0.0)
+
 
 def fn(y, _):
-        return 0.5 * (y - jnp.tanh(y + 1)) ** 2
+    return 0.5 * (y - jnp.tanh(y + 1)) ** 2
+
 
 solver = optx.SSBFGS(rtol=1e-5, atol=1e-5)
 solver = optx.BestSoFarMinimiser(solver)
+
 sol = optx.minimise(fn, solver, jnp.array(0.0))
+
 assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
 print("Assertion was successful!")
 ```
 
-## Citation
+---
 
-If you found this library to be useful in academic work, then please cite: ([Journal Paper][https://www.sciencedirect.com/science/article/pii/S0045782525005808])
+# Citation
 
+If you found this library useful in academic research, please cite the following works.
+
+## SSBFGS / SSBroyden Paper
 
 ```bibtex
 @article{kiyani2025optimizing,
@@ -55,22 +75,48 @@ If you found this library to be useful in academic work, then please cite: ([Jou
 }
 ```
 
-Also for Optimistix library please cite: ([arXiv link](https://arxiv.org/abs/2402.09983))
+Paper link:  
+https://www.sciencedirect.com/science/article/pii/S0045782525005808
+
+---
+
+## Turbulence Closure and Flow Inference Paper
 
 ```bibtex
-@article{optimistix2024,
-    title={Optimistix: modular optimisation in JAX and Equinox},
-    author={Jason Rader and Terry Lyons and Patrick Kidger},
-    journal={arXiv:2402.09983},
-    year={2024},
+@article{zhang2026turbulence,
+  title={Turbulence closure in Reynolds-averaged Navier--Stokes and flow inference around a cylinder using physics-informed neural networks and sparse experimental data},
+  author={Zhang, Zhen and Shukla, Khemraj and Wang, Zhicheng and Morales, Anthony and K{\"a}ufer, Theo and Salauddin, Sheikh and Walters, Nathan and Barrett, David and Ahmed, Kareem and Triantafyllou, Michael S and others},
+  journal={Journal of Fluid Mechanics},
+  volume={1034},
+  pages={A16},
+  year={2026},
+  publisher={Cambridge University Press}
 }
 ```
 
+---
 
+## Optimistix
 
-## Credit
+Please also cite the original Optimistix library:
 
-Optimistix was primarily built by Jason Rader (@packquickly): [Twitter](https://twitter.com/packquickly); [GitHub](https://github.com/packquickly); [Website](https://www.packquickly.com/).
+```bibtex
+@article{optimistix2024,
+  title={Optimistix: modular optimisation in JAX and Equinox},
+  author={Rader, Jason and Lyons, Terry and Kidger, Patrick},
+  journal={arXiv:2402.09983},
+  year={2024}
+}
+```
 
+arXiv: https://arxiv.org/abs/2402.09983
 
-[https://www.sciencedirect.com/science/article/pii/S0045782525005808]: https://www.sciencedirect.com/science/article/pii/S0045782525005808
+---
+
+# Credits
+
+Optimistix was primarily developed by Jason Rader (@packquickly).
+
+- GitHub: https://github.com/packquickly
+- Website: https://www.packquickly.com/
+- Twitter/X: https://twitter.com/packquickly
