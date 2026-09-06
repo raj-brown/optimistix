@@ -8,10 +8,10 @@ This library provides two quasi-Newton optimizers — **SSBFGS** and **SSBroyden
 
 The package requires Python 3.11 or newer. A virtual environment is recommended.
 
-## Install from the main branch
+## Install the SS-Quasi-Newton feature branch
 
 ```bash
-git clone https://github.com/raj-brown/optimistix.git
+git clone -b feature/ss-quasi-newton https://github.com/raj-brown/optimistix.git
 cd optimistix
 python3 -m venv .venv
 source .venv/bin/activate
