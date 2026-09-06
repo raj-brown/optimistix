@@ -5,6 +5,7 @@ import equinox as eqx
 import equinox.internal as eqxi
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 from jaxtyping import Array, Bool, Int, PyTree, Scalar
 
 from .._custom_types import Aux, Fn, Y
@@ -74,6 +75,12 @@ class OptaxMinimiser(AbstractMinimiser[Y, Aux, _OptaxState]):
     ) -> _OptaxState:
         del fn, args, options, aux_struct
         opt_state = self.optim.init(y)
+        opt_state = jtu.tree_map(
+            lambda x: x.astype(jnp.int32)
+            if isinstance(x, jax.Array) and jnp.issubdtype(x.dtype, jnp.integer)
+            else x,
+            opt_state,
+        )
         maxval = jnp.array(jnp.finfo(f_struct.dtype).max, f_struct.dtype)
         return _OptaxState(
             step=jnp.array(0), f=maxval, opt_state=opt_state, terminate=jnp.array(False)

@@ -945,7 +945,6 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 sigma_k_n = jnp.abs(sigma_k) ** (1.0 / (1 - N))
 
                 # \phi_k
-                ## TODO: Fix for undefined variable
                 phi_k = (1.0 - theta_k) / (1 + a_k * theta_k)
 
                 true_branch_theta = lambda theta_k: rho_k_pos * jnp.minimum(

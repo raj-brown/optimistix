@@ -212,7 +212,7 @@ class ZoomState(eqx.Module, Generic[Y], strict=True):
     descent_direction: Y
 
 
-class Zoom(AbstractSearch[Y, _FnInfo, _FnEvalInfo, ZoomState], strict=True):
+class Zoom(AbstractSearch[Y, _FnInfo, _FnEvalInfo, ZoomState]):
     # TODO decide on defaults
     c1: float = 1e-4
     c2: float = 0.9
@@ -224,6 +224,18 @@ class Zoom(AbstractSearch[Y, _FnInfo, _FnEvalInfo, ZoomState], strict=True):
     min_stepsize: float = 1e-6
     maxls: int = 30
     verbose: bool = False
+
+    def __post_init__(self):
+        self.c2 = eqx.error_if(
+            self.c2,
+            (self.c2 <= self.c1) | (self.c2 >= 1),
+            "`c2` must be between `c1` and 1.",
+        )
+        self.min_stepsize = eqx.error_if(
+            self.min_stepsize,
+            self.min_stepsize <= 0,
+            "`min_stepsize` must be strictly greater than 0.",
+        )
 
     @staticmethod
     def _replace_step_with_safe(state: ZoomState):
