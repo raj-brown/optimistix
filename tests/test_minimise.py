@@ -17,6 +17,7 @@ from .helpers import (
     finite_difference_jvp,
     forward_only_fn_init_options_expected,
     golden_search_fn_y0_options_expected,
+    jvp_minimisers,
     matyas,
     minimisation_fn_minima_init_args,
     minimisers,
@@ -65,7 +66,7 @@ def test_minimise(solver, _fn, minimum, init, args, options):
 @pytest.mark.parametrize(
     "options", (dict(autodiff_mode="fwd"), dict(autodiff_mode="bwd"))
 )
-@pytest.mark.parametrize("solver", minimisers)
+@pytest.mark.parametrize("solver", jvp_minimisers)
 @pytest.mark.parametrize("_fn, minimum, init, args", minimisation_fn_minima_init_args)
 def test_minimise_jvp(getkey, solver, _fn, minimum, init, args, options):
     if isinstance(solver, (optx.GradientDescent, optx.NonlinearCG)):

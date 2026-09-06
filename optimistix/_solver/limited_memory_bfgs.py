@@ -355,7 +355,9 @@ class AbstractLBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, _LBFGSUpdateState]):
         f_info: _Hessian,
         f_eval_info: FunctionInfo.EvalGrad,
         hessian_update_state: _LBFGSUpdateState,
+        step_size,
     ) -> tuple[_Hessian, _LBFGSUpdateState]:
+        del step_size
         if isinstance(f_info, FunctionInfo.EvalGradHessianInv):
             operator = f_info.hessian_inv
         elif isinstance(f_info, FunctionInfo.EvalGradHessian):

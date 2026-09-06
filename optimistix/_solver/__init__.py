@@ -1,4 +1,7 @@
-from .backtracking import BacktrackingArmijo as BacktrackingArmijo
+from .backtracking import (
+    BacktrackingArmijo as BacktrackingArmijo,
+    BacktrackingStrongWolfe as BacktrackingStrongWolfe,
+)
 from .best_so_far import (
     BestSoFarFixedPoint as BestSoFarFixedPoint,
     BestSoFarLeastSquares as BestSoFarLeastSquares,
@@ -42,10 +45,15 @@ from .quasi_newton import (
     AbstractBFGS as AbstractBFGS,
     AbstractDFP as AbstractDFP,
     AbstractQuasiNewton as AbstractQuasiNewton,
+    AbstractSSBFGS as AbstractSSBFGS,
+    AbstractSSBroyden as AbstractSSBroyden,
     BFGS as BFGS,
     DFP as DFP,
+    SSBFGS as SSBFGS,
+    SSBroyden as SSBroyden,
 )
 from .trust_region import (
     ClassicalTrustRegion as ClassicalTrustRegion,
     LinearTrustRegion as LinearTrustRegion,
 )
+from .zoom import Zoom as Zoom

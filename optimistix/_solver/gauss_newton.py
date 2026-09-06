@@ -257,6 +257,7 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
         static = eqx.filter(state.f_info.jac, eqx.is_array, inverse=True)
         jac = eqx.combine(dynamic, static)
         f_eval_info = eqx.tree_at(lambda f: f.jac, f_eval_info, jac)
+        lin_fn = lambda x: x
 
         step_size, accept, search_result, search_state = self.search.step(
             state.first_step,
@@ -264,6 +265,8 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
             state.y_eval,
             state.f_info,
             f_eval_info,
+            lin_fn,
+            options,
             state.search_state,
         )
         num_steps = state.num_steps + 1

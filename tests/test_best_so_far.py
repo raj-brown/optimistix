@@ -41,3 +41,33 @@ def test_minimise():
     solver = optx.BestSoFarMinimiser(solver)
     sol = optx.minimise(fn, solver, jnp.array(0.0))
     assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
+
+
+def test_minimise_SSBFGS_with_inv():
+    def fn(y, _):
+        return 0.5 * (y - jnp.tanh(y + 1)) ** 2
+
+    solver = optx.SSBFGS(rtol=1e-6, atol=1e-6, use_inverse=True)
+    solver = optx.BestSoFarMinimiser(solver)
+    sol = optx.minimise(fn, solver, jnp.array(0.0))
+    assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
+
+
+def test_minimise_SSBFGS_with_no_inv():
+    def fn(y, _):
+        return 0.5 * (y - jnp.tanh(y + 1)) ** 2
+
+    solver = optx.SSBFGS(rtol=1e-6, atol=1e-6, use_inverse=False)
+    solver = optx.BestSoFarMinimiser(solver)
+    sol = optx.minimise(fn, solver, jnp.array(0.0))
+    assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
+
+
+def test_minimise_SSBroyden():
+    def fn(y, _):
+        return 0.5 * (y - jnp.tanh(y + 1)) ** 2
+
+    solver = optx.SSBroyden(rtol=1e-6, atol=1e-6, use_inverse=True)
+    solver = optx.BestSoFarMinimiser(solver)
+    sol = optx.minimise(fn, solver, jnp.array(0.0))
+    assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)

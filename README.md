@@ -1,83 +1,138 @@
-<h1 align='center'>Optimistix</h1>
+<h1 align="center">SS-Quasi-Newton-Optimistix</h1>
 
-Optimistix is a [JAX](https://github.com/google/jax) library for nonlinear solvers: root finding, minimisation, fixed points, and least squares.
+This library provides two quasi-Newton optimizers — **SSBFGS** and **SSBroyden** — developed on top of [Optimistix](https://github.com/patrick-kidger/optimistix), a [JAX](https://github.com/google/jax)-based library for nonlinear solvers including root finding, minimization, fixed-point problems, and least-squares optimization.
 
-Features include:
+---
 
-- interoperable solvers: e.g. autoconvert root find problems to least squares problems, then solve using a minimisation algorithm.
-- modular optimisers: e.g. use a BFGS quadratic bowl with a dogleg descent path with a trust region update.
-- using a PyTree as the state.
-- fast compilation and runtimes.
-- interoperability with [Optax](https://github.com/deepmind/optax).
-- all the benefits of working with JAX: autodiff, autoparallelism, GPU/TPU support etc.
+# Installation
 
-## Installation
+The package requires Python 3.10 or newer. A virtual environment is recommended.
+
+## Install from the SSBFGS branch
 
 ```bash
-pip install optimistix
+git clone -b SSBFGS https://github.com/raj-brown/optimistix.git
+cd optimistix
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev,tests]'
 ```
 
-Requires Python 3.10+ and JAX 0.4.38+ and [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+.
+This installs the package in editable mode together with the development tools and
+test dependencies. The default JAX installation uses the CPU backend.
 
-## Documentation
+## Install the published package
 
-Available at [https://docs.kidger.site/optimistix](https://docs.kidger.site/optimistix).
+```bash
+python -m pip install optimistix
+```
 
-## Quick example
+## Optional CUDA installation
+
+For NVIDIA CUDA, install the JAX wheel that matches your CUDA version by following the
+official [JAX installation instructions](https://docs.jax.dev/en/latest/installation.html),
+then install this package:
+
+```bash
+python -m pip install optimistix
+```
+
+## Verify the installation
+
+```bash
+python -c "import jax, optimistix; print(jax.devices()); print(optimistix.__file__)"
+```
+
+---
+
+# Documentation
+
+The Optimistix documentation is available at:
+
+👉 https://docs.kidger.site/optimistix
+
+---
+
+# Quick Example
 
 ```python
 import jax.numpy as jnp
 import optimistix as optx
 
-# Let's solve the ODE dy/dt=tanh(y(t)) with the implicit Euler method.
-# We need to find y1 s.t. y1 = y0 + tanh(y1)dt.
 
-y0 = jnp.array(1.)
-dt = jnp.array(0.1)
+def fn(y, _):
+    return 0.5 * (y - jnp.tanh(y + 1)) ** 2
 
-def fn(y, args):
-    return y0 + jnp.tanh(y) * dt
 
-solver = optx.Newton(rtol=1e-5, atol=1e-5)
-sol = optx.fixed_point(fn, solver, y0)
-y1 = sol.value  # satisfies y1 == fn(y1)
+solver = optx.SSBFGS(rtol=1e-5, atol=1e-5)
+solver = optx.BestSoFarMinimiser(solver)
+
+sol = optx.minimise(fn, solver, jnp.array(0.0))
+
+assert jnp.allclose(sol.value, 0.96118069, rtol=1e-5, atol=1e-5)
+print("Assertion was successful!")
 ```
 
-## Citation
+---
 
-If you found this library to be useful in academic work, then please cite: ([arXiv link](https://arxiv.org/abs/2402.09983))
+# Citation
+
+If you found this library useful in academic research, please cite the following works.
+
+## SSBFGS / SSBroyden Paper
 
 ```bibtex
-@article{optimistix2024,
-    title={Optimistix: modular optimisation in JAX and Equinox},
-    author={Jason Rader and Terry Lyons and Patrick Kidger},
-    journal={arXiv:2402.09983},
-    year={2024},
+@article{kiyani2025optimizing,
+  title={Optimizing the optimizer for physics-informed neural networks and Kolmogorov-Arnold networks},
+  author={Kiyani, Elham and Shukla, Khemraj and Urb{\'a}n, Jorge F and Darbon, J{\'e}r{\^o}me and Karniadakis, George Em},
+  journal={Computer Methods in Applied Mechanics and Engineering},
+  volume={446},
+  pages={118308},
+  year={2025},
+  publisher={Elsevier}
 }
 ```
 
-## See also: other libraries in the JAX ecosystem
+Paper link:  
+https://www.sciencedirect.com/science/article/pii/S0045782525005808
 
-**Always useful**  
-[Equinox](https://github.com/patrick-kidger/equinox): neural networks and everything not already in core JAX!  
-[jaxtyping](https://github.com/patrick-kidger/jaxtyping): type annotations for shape/dtype of arrays.  
+---
 
-**Deep learning**  
-[Optax](https://github.com/deepmind/optax): first-order gradient (SGD, Adam, ...) optimisers.  
-[Orbax](https://github.com/google/orbax): checkpointing (async/multi-host/multi-device).  
-[Levanter](https://github.com/stanford-crfm/levanter): scalable+reliable training of foundation models (e.g. LLMs).  
-[paramax](https://github.com/danielward27/paramax): parameterizations and constraints for PyTrees.  
+## Curvature-aware optimization for high-accuracy physics-informed neural networks
 
-**Scientific computing**  
-[Diffrax](https://github.com/patrick-kidger/diffrax): numerical differential equation solvers.  
-[Lineax](https://github.com/patrick-kidger/lineax): linear solvers.  
-[BlackJAX](https://github.com/blackjax-devs/blackjax): probabilistic+Bayesian sampling.  
-[sympy2jax](https://github.com/patrick-kidger/sympy2jax): SymPy<->JAX conversion; train symbolic expressions via gradient descent.  
-[PySR](https://github.com/milesCranmer/PySR): symbolic regression. (Non-JAX honourable mention!)  
+```bibtex
+@article{jnini2026curvature,
+  title={Curvature-aware optimization for high-accuracy physics-informed neural networks},
+  author={Jnini, Anas and Kiyani, Elham and Shukla, Khemraj and Urban, Jorge F and Daryakenari, Nazanin Ahmadi and Muller, Johannes and Zeinhofer, Marius and Karniadakis, George Em},
+  journal={arXiv preprint arXiv:2604.05230},
+  year={2026}
+}
+```
 
-**Awesome JAX**  
-[Awesome JAX](https://github.com/n2cholas/awesome-jax): a longer list of other JAX projects.  
+---
 
-## Credit
+## Optimistix
 
-Optimistix was primarily built by Jason Rader (@packquickly): [Twitter](https://twitter.com/packquickly); [GitHub](https://github.com/packquickly); [Website](https://www.packquickly.com/).
+Please also cite the original Optimistix library:
+
+```bibtex
+@article{optimistix2024,
+  title={Optimistix: modular optimisation in JAX and Equinox},
+  author={Rader, Jason and Lyons, Terry and Kidger, Patrick},
+  journal={arXiv:2402.09983},
+  year={2024}
+}
+```
+
+arXiv: https://arxiv.org/abs/2402.09983
+
+---
+
+# Credits
+
+Optimistix was primarily developed by Jason Rader (@packquickly).
+
+- GitHub: https://github.com/packquickly
+- Website: https://www.packquickly.com/
+- Twitter/X: https://twitter.com/packquickly

@@ -295,6 +295,10 @@ _minim_only = (
 
 minimisers = _general_minimisers + _minim_only
 
+# Optax line searches make discrete accept/reject decisions, so their implicit JVPs
+# are not expected to agree with finite differences.
+jvp_minimisers = _general_minimisers[:-1] + _minim_only[:-2]
+
 # the minimisers can handle least squares problems, but the least squares
 # solvers cannot handle general minimisation problems.
 # without the ones that work, but are just pretty bad!
