@@ -6,24 +6,43 @@ This library provides two quasi-Newton optimizers — **SSBFGS** and **SSBroyden
 
 # Installation
 
-## Install JAX (CUDA 12)
+The package requires Python 3.10 or newer. A virtual environment is recommended.
+
+## Install from the SSBFGS branch
 
 ```bash
-pip install -U --pre jax jaxlib "jax-cuda12-plugin[with-cuda]" jax-cuda12-pjrt \
-  -i https://us-python.pkg.dev/ml-oss-artifacts-published/jax/simple/
+git clone -b SSBFGS https://github.com/raj-brown/optimistix.git
+cd optimistix
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev,tests]'
 ```
 
-## Install SS-Quasi-Newton-Optimistix
+This installs the package in editable mode together with the development tools and
+test dependencies. The default JAX installation uses the CPU backend.
+
+## Install the published package
 
 ```bash
-pip install git+https://github.com/raj-brown/optimistix.git@SSBFGS
+python -m pip install optimistix
 ```
 
-## Requirements
+## Optional CUDA installation
 
-- Python 3.10+
-- JAX 0.4.38+
-- [Equinox](https://github.com/patrick-kidger/equinox) 0.11.11+
+For NVIDIA CUDA, install the JAX wheel that matches your CUDA version by following the
+official [JAX installation instructions](https://docs.jax.dev/en/latest/installation.html),
+then install this package:
+
+```bash
+python -m pip install optimistix
+```
+
+## Verify the installation
+
+```bash
+python -c "import jax, optimistix; print(jax.devices()); print(optimistix.__file__)"
+```
 
 ---
 
