@@ -13,11 +13,12 @@ from .._custom_types import Args, Aux, DescentState, Fn, Out, SearchState, Y
 from .._least_squares import AbstractLeastSquaresSolver
 from .._misc import (
     cauchy_termination,
+    default_verbose,
     filter_cond,
     max_norm,
     sum_squares,
     tree_full_like,
-    verbose_print,
+    tree_where,
 )
 from .._search import (
     AbstractDescent,
@@ -193,7 +194,7 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
     - `norm`: `Callable[[PyTree], Scalar]`
     - `descent`: `AbstractDescent`
     - `search`: `AbstractSearch`
-    - `verbose`: `frozenset[str]`
+    - `verbose`: `Callable[..., None]`
 
     Supports the following `options`:
 
@@ -210,7 +211,7 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
     search: AbstractVar[
         AbstractSearch[Y, FunctionInfo.ResidualJac, FunctionInfo.ResidualJac, Any]
     ]
-    verbose: AbstractVar[frozenset[str]]
+    verbose: AbstractVar[Callable[..., None]]
 
     def init(
         self,
@@ -297,36 +298,21 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
             accept, accepted, rejected, state.descent_state
         )
 
-        if len(self.verbose) > 0:
-            verbose_step = "step" in self.verbose
-            verbose_loss = "loss" in self.verbose
-            verbose_accepted = "accepted" in self.verbose
-            verbose_step_size = "step_size" in self.verbose
-            verbose_y = "y" in self.verbose
-            loss_eval = 0.5 * sum_squares(f_eval_info.residual)
-            loss = 0.5 * sum_squares(state.f_info.residual)
-            verbose_print(
-                (verbose_step, "Step", state.num_steps),
-                (
-                    verbose_step and verbose_accepted,
-                    "Accepted steps",
-                    state.num_accepted_steps,
-                ),
-                (
-                    verbose_step and verbose_accepted,
-                    "Steps since acceptance",
-                    state.num_steps_since_acceptance,
-                ),
-                (verbose_loss, "Loss on this step", loss_eval),
-                (
-                    verbose_loss and verbose_accepted,
-                    "Loss on the last accepted step",
-                    loss,
-                ),
-                (verbose_step_size, "Step size", step_size),
-                (verbose_y, "y", state.y_eval),
-                (verbose_y and verbose_accepted, "y on the last accepted step", y),
-            )
+        loss_eval = 0.5 * sum_squares(f_eval_info.residual)
+        loss = 0.5 * sum_squares(state.f_info.residual)
+        self.verbose(
+            num_steps=("Step", state.num_steps),
+            accepted_steps=("Accepted steps", state.num_accepted_steps),
+            steps_since_acceptance=(
+                "Steps since acceptance",
+                state.num_steps_since_acceptance,
+            ),
+            loss_this_step=("Loss on this step", loss_eval),
+            loss_last_accepted_step=("Loss on the last accepted step", loss),
+            step_size=("Step size", step_size),
+            y=("y", state.y_eval),
+            y_last_accepted_step=("y on the last accepted step", y),
+        )
 
         y_descent, descent_result = self.descent.step(step_size, descent_state)
         y_eval = (y**ω + y_descent**ω).ω
@@ -334,6 +320,7 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
             search_result == RESULTS.successful, descent_result, search_result
         )
 
+        prev_aux = tree_where(state.first_step, aux, state.aux)
         state = _GaussNewtonState(
             first_step=jnp.array(False),
             y_eval=y_eval,
@@ -347,7 +334,7 @@ class AbstractGaussNewton(AbstractLeastSquaresSolver[Y, Out, Aux, _GaussNewtonSt
             num_accepted_steps=num_accepted_steps,
             num_steps_since_acceptance=num_steps_since_acceptance,
         )
-        return y, state, aux
+        return y, state, prev_aux
 
     def terminate(
         self,
@@ -393,7 +380,7 @@ class GaussNewton(AbstractGaussNewton[Y, Out, Aux]):
     norm: Callable[[PyTree], Scalar]
     descent: NewtonDescent[Y]
     search: LearningRate[Y]
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -401,27 +388,28 @@ class GaussNewton(AbstractGaussNewton[Y, Out, Aux]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         linear_solver: lx.AbstractLinearSolver = lx.AutoLinearSolver(well_posed=None),
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
         self.norm = norm
         self.descent = NewtonDescent(linear_solver=linear_solver)
         self.search = LearningRate(1.0)
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 GaussNewton.__init__.__doc__ = """**Arguments:**
 
 - `rtol`: Relative tolerance for terminating the solve.
 - `atol`: Absolute tolerance for terminating the solve.
-- `norm`: The norm used to determine the difference between two iterates in the 
+- `norm`: The norm used to determine the difference between two iterates in the
     convergence criteria. Should be any function `PyTree -> Scalar`. Optimistix
     includes three built-in norms: [`optimistix.max_norm`][],
     [`optimistix.rms_norm`][], and [`optimistix.two_norm`][].
 - `linear_solver`: The linear solver used to compute the Newton step.
 - `verbose`: Whether to print out extra information about how the solve is proceeding.
-    Should be a frozenset of strings, specifying what information to print out. Valid
-    entries are `step`, `loss`, `accepted`, `step_size`, `y`. For example
-    `verbose=frozenset({"loss", "step_size"})`.
+    Can either be `False` to print out nothing, or `True` to print out all information,
+    or (for customisation) a callable `**kwargs -> None`. If provided as a callable then
+    each value will be a 2-tuple of `(str, jax.Array)` providing a human-readable name
+    and its corresponding value.
 """

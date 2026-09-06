@@ -1,6 +1,6 @@
 import functools as ft
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, NamedTuple, TypeVar
 
 import diffrax as dfx
 import equinox as eqx
@@ -16,7 +16,7 @@ import optax
 import optimistix as optx
 from equinox.internal import ω
 from jaxtyping import Array, PyTree, Scalar
-from optimistix._misc import tree_full_like
+from optimistix._misc import default_verbose, tree_full_like
 
 
 Y = TypeVar("Y")
@@ -95,7 +95,7 @@ class DoglegMax(optx.AbstractGaussNewton[Y, Out, Aux]):
     norm: Callable[[PyTree], Scalar]
     descent: optx.DoglegDescent[Y]
     search: optx.ClassicalTrustRegion[Y]
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -111,7 +111,7 @@ class DoglegMax(optx.AbstractGaussNewton[Y, Out, Aux]):
             trust_region_norm=optx.max_norm,
         )
         self.search = optx.ClassicalTrustRegion()
-        self.verbose = frozenset()
+        self.verbose = default_verbose(False)
 
 
 class BFGSDampedNewton(optx.AbstractBFGS):
@@ -123,7 +123,7 @@ class BFGSDampedNewton(optx.AbstractBFGS):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.DampedNewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class BFGSIndirectDampedNewton(optx.AbstractBFGS):
@@ -135,7 +135,7 @@ class BFGSIndirectDampedNewton(optx.AbstractBFGS):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.IndirectDampedNewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class BFGSDogleg(optx.AbstractBFGS):
@@ -147,7 +147,7 @@ class BFGSDogleg(optx.AbstractBFGS):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.DoglegDescent(linear_solver=lx.SVD())
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class BFGSLinearTrustRegion(optx.AbstractBFGS):
@@ -159,7 +159,7 @@ class BFGSLinearTrustRegion(optx.AbstractBFGS):
     use_inverse: bool = True
     search: optx.AbstractSearch = optx.LinearTrustRegion()
     descent: optx.AbstractDescent = optx.NewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class BFGSLinearTrustRegionHessian(optx.AbstractBFGS):
@@ -171,7 +171,7 @@ class BFGSLinearTrustRegionHessian(optx.AbstractBFGS):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.LinearTrustRegion()
     descent: optx.AbstractDescent = optx.NewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class BFGSClassicalTrustRegionHessian(optx.AbstractBFGS):
@@ -183,7 +183,7 @@ class BFGSClassicalTrustRegionHessian(optx.AbstractBFGS):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.NewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class DFPDampedNewton(optx.AbstractDFP):
@@ -195,7 +195,7 @@ class DFPDampedNewton(optx.AbstractDFP):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.DampedNewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class DFPIndirectDampedNewton(optx.AbstractDFP):
@@ -207,7 +207,7 @@ class DFPIndirectDampedNewton(optx.AbstractDFP):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.IndirectDampedNewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class DFPDogleg(optx.AbstractDFP):
@@ -219,7 +219,7 @@ class DFPDogleg(optx.AbstractDFP):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.DoglegDescent(linear_solver=lx.SVD())
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 class DFPClassicalTrustRegionHessian(optx.AbstractDFP):
@@ -231,7 +231,7 @@ class DFPClassicalTrustRegionHessian(optx.AbstractDFP):
     use_inverse: bool = False
     search: optx.AbstractSearch = optx.ClassicalTrustRegion()
     descent: optx.AbstractDescent = optx.NewtonDescent()
-    verbose: frozenset[str] = frozenset()
+    verbose: Callable[..., None] = default_verbose(False)
 
 
 atol = rtol = 1e-8
@@ -940,6 +940,18 @@ golden_search_fn_y0_options_expected = (
         dict(lower=0, upper=3),
         jnp.array(0.0),
     ),
+    # Regression test: bracket does not straddle zero. The initial `middle` used
+    # to be computed as `(upper - lower) / (golden_ratio + 1)`, missing a `lower +`
+    # offset. That value happens to still land inside brackets containing zero
+    # (since it coincides with the correct middle when `lower == 0`), which is why
+    # this bug went unnoticed -- but for a bracket like this one, the erroneous
+    # `middle` falls far outside `[lower, upper]` and the solver diverges.
+    (
+        lambda y, args: (y - 100) ** 2,
+        jnp.array(100),
+        dict(lower=99, upper=101),
+        jnp.array(100.0),
+    ),
 )
 
 # Define a bounded MLP (to check if clipping/projections works on complicated pytrees).
@@ -1136,5 +1148,364 @@ y_bounds_step_offset_expected = (
         jnp.array([1.0, -1.0]),
         None,
         jnp.array([0.5, 0.5]),
+    ),
+)
+
+
+# Easy tests for bounded and constrained optimisation. These are all smoke tests, but
+# they are varied enough that they help catch quite a few different cases early.
+# For example, initial points may be on the constraint boundary, or be a (general)
+# Cauchy point, upper as well as lower bounds may be blocking, etc.
+
+
+def _paraboloid(y, args):
+    del args
+    squares = jtu.tree_map(lambda x: x**2, y)
+    squares, _ = jfu.ravel_pytree(squares)
+    return jnp.sum(squares)
+
+
+class _Point(NamedTuple):
+    a: float
+    b: float
+
+
+# Vary cases and pytree types: smoke tests with trivial quadratic function
+# What do we mean by Cauchy point? This point is the first local minimiser
+# of a piecewise linear path along the surface of a hypercube defined by the
+# bounds on the optimisation problem, identified by solving for the minimum
+# of the quadratic approximation to the target function on each of the segments
+# making up the piecewise linear path. This point is used e.g. in BFGS-B and
+# its variants to identify the set of active bound constraints, and then solve
+# for a new direction in the unconstrained subspace.
+# In the literature, it is sometimes also called the "generalised Cauchy point"
+# (e.g. in Trust Region Methods by Conn, Gould, Toint).
+# Below, if locations of the Cauchy point are indicated, these are given with
+# respect to the initial point. For example, if the Cauchy point is at the
+# minimum, then we expect to encounter it in the first step due to the projection
+# onto the hypercube, even if a full gradient or Newton step would have led us
+# to leave the feasible set.
+bounded_paraboloids = (
+    # fn, y0, args, bounds, expected result
+    # No bounds active at (0.0, 0.0), bounds far from minimum
+    (
+        _paraboloid,
+        jnp.array([-1.0, -5.0]),
+        None,
+        (jnp.array([-jnp.inf, -jnp.inf]), jnp.array([1.0, 1.0])),
+        jnp.array([0.0, 0.0]),
+    ),
+    # One upper bound active at (0.0, 0.0), Cauchy point is at minimum
+    (
+        _paraboloid,
+        jnp.array([-4.0, -1.0]),
+        None,
+        (jnp.array([-jnp.inf, -jnp.inf]), jnp.array([0.0, 1.0])),
+        jnp.array([0.0, 0.0]),
+    ),
+    # Two upper bounds active at (0.0, 0.0), Cauchy point is at minimum
+    (
+        _paraboloid,
+        [-1.0, -1.0],
+        None,
+        ([-jnp.inf, -jnp.inf], [0.0, 0.0]),
+        [0.0, 0.0],
+    ),
+    # One bound active at (-1.0, 0.0)
+    (
+        _paraboloid,
+        {"a": -3.0, "b": -1.0},
+        None,
+        ({"a": -jnp.inf, "b": -jnp.inf}, {"a": -1.0, "b": 1.0}),
+        {"a": -1.0, "b": 0.0},
+    ),
+    # Two bounds active at (-1.0, 0.0), initial point at minimum and Cauchy point
+    (
+        _paraboloid,
+        (-1.0, 0.0),
+        None,
+        ((-jnp.inf, -jnp.inf), (-1.0, 0.0)),
+        (-1.0, 0.0),
+    ),
+    # One bound active at (0.0, -1.0), initial point out of bounds
+    (
+        _paraboloid,
+        (0.0, {"b": -2.0}),
+        None,
+        ((-jnp.inf, {"b": -jnp.inf}), (1.0, {"b": -1.0})),
+        (0.0, {"b": -1.0}),
+    ),
+    # Two bounds active at (0.0, -1.0)
+    (
+        _paraboloid,
+        _Point(-1.0, -7.0),
+        None,
+        (_Point(-jnp.inf, -jnp.inf), _Point(0.0, -1.0)),
+        _Point(0.0, -1.0),
+    ),
+    # Two bounds active at (-1.0, -1.)
+    (
+        _paraboloid,
+        jnp.array([-3.0, -1.0]),
+        None,
+        (jnp.array([-jnp.inf, -jnp.inf]), jnp.array([-1.0, -1.0])),
+        jnp.array([-1.0, -1.0]),
+    ),
+    # Two bounds active at (1, 1), lower bound blocking
+    (
+        _paraboloid,
+        jnp.array([2.0, 3.0]),
+        None,
+        (jnp.array([1.0, 1.0]), jnp.array([jnp.inf, jnp.inf])),
+        jnp.array([1.0, 1.0]),
+    ),
+)
+
+
+def _scalar_rosenbrock(y, args):
+    out = rosenbrock(y, args)
+    flat, _ = jfu.ravel_pytree(out)
+    return jnp.sum(flat)
+
+
+minimise_bounded_with_local_minima = (
+    # fn, y0, args, bounds, expected result
+    (
+        _himmelblau,
+        [4.0, 1.0],  # Initialise between two minima
+        (jnp.array(11.0), jnp.array(7.0)),
+        ([0.0, 0.0], [5.0, 5.0]),  # Quadrant: I
+        [3.0, 2.0],
+    ),
+    (
+        _himmelblau,
+        jnp.array([4.0, -1.0]),
+        (jnp.array(11.0), jnp.array(7.0)),
+        (jnp.array([0.0, -5.0]), jnp.array([5.0, 0.0])),  # II
+        jnp.array([3.584428, -1.848126]),
+    ),
+    (
+        _himmelblau,
+        (-3.0, -2.0),  # TODO: This problem is sensitive to initialisation
+        # This makes it a good test case for inertia correction and initialisation of
+        # dual variables. It converges to a stationary point when started at (-3, -1).
+        (jnp.array(11.0), jnp.array(7.0)),
+        ((-5.0, -5.0), (0.0, 0.0)),  # Quadrant: III
+        (-3.779310, -3.283186),
+    ),
+    (
+        _himmelblau,
+        [jnp.array(-3.0), jnp.array(2.0)],
+        (jnp.array(11.0), jnp.array(7.0)),
+        ([jnp.array(-8.0), jnp.array(0.0)], [jnp.array(0.0), jnp.array(8.0)]),  # IV
+        [jnp.array(-2.805118), jnp.array(3.131312)],
+    ),
+    (
+        _scalar_rosenbrock,
+        (0.4, 0.0),
+        None,
+        ((-5.0, -6.0), (4.0, 5.0)),
+        (1.0, 1.0),
+    ),
+)
+
+
+# Cauchy point tests: these all use a simple paraboloid centered around the origin as
+# the objective function. This means that the gradient evaluated at any of the
+# following test points is equal to the reflection of this point about the origin, and
+# the bounds determine where the Cauchy point then lies.
+def _wrapped_paraboloid(y):
+    return _paraboloid(y, None)
+
+
+y00 = jnp.array([3.0, 3.0])
+y01 = jnp.array([-2.0, 2.0])
+y02 = jnp.array([2.0, 2.0])
+y03 = jnp.array([1.0, 1.0])
+y04 = jnp.array([3.0, 3.0])
+y05 = jnp.array([0.0, 0.0])
+y06 = jnp.array([2.0, 1.0])
+y07 = jnp.array([3.0, 3.0])
+y08 = jnp.array([3.0, 3.0])
+y09 = jnp.array([0.0, 0.0])
+y10 = jnp.array([3.0, 2.0])
+y11 = jnp.array([3.0, 2.0])
+y12 = jnp.array([-1.0, -1.0])
+y13 = jnp.array([-2.0, -2.0])
+y14 = jnp.array([1.0, 1.0])
+y15 = jnp.array([1.0, 1.0])
+y16 = jnp.array(1.0)
+
+
+cauchy_point__y_bounds_grad_hessian_expected = (
+    (
+        y00,  # Cauchy point at lower bounds, shorter than full gradient step
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y00),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y00),
+            output_structure=jax.eval_shape(lambda: y00),
+        ),
+        jnp.array([-2.0, -2.0]),
+    ),
+    (
+        y01,  # Full gradient step possible, lower blocking bound changes
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y01),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y01),
+            output_structure=jax.eval_shape(lambda: y01),
+        ),
+        jnp.array([2.0, -2.0]),
+    ),
+    (
+        y02,  # Full gradient step coincides exactly with lower bounds
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y02),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y02),
+            output_structure=jax.eval_shape(lambda: y02),
+        ),
+        jnp.array([-2.0, -2.0]),
+    ),
+    (
+        y03,  # Full gradient step possible, starts and ends inside feasible set
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y03),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y03),
+            output_structure=jax.eval_shape(lambda: y03),
+        ),
+        jnp.array([-1.0, -1.0]),
+    ),
+    (
+        y04,  # ????
+        (jnp.array([1.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y04),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y04),
+            output_structure=jax.eval_shape(lambda: y04),
+        ),
+        jnp.array([1.0, 1.0]),
+    ),
+    (
+        y05,  # Gradient is zero, no displacement
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y05),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y05),
+            output_structure=jax.eval_shape(lambda: y05),
+        ),
+        jnp.array([0.0, 0.0]),
+    ),
+    (
+        y06,  # Lower bound blocking for y1, not blocking for y2
+        (jnp.array([1.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y06),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y06),
+            output_structure=jax.eval_shape(lambda: y06),
+        ),
+        jnp.array([1.0, -1.0]),
+    ),
+    (
+        y07,  # Cauchy point at both lower bounds, nonfinite upper bounds
+        (jnp.array([-2.0, -2.0]), jnp.array([jnp.inf, jnp.inf])),
+        jax.grad(_wrapped_paraboloid)(y07),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y07),
+            output_structure=jax.eval_shape(lambda: y07),
+        ),
+        jnp.array([-2.0, -2.0]),
+    ),
+    (
+        y08,  # Full gradient step possible, nonfinite lower bounds not blocking
+        (jnp.array([-jnp.inf, -jnp.inf]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y08),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y08),
+            output_structure=jax.eval_shape(lambda: y08),
+        ),
+        jnp.array([-3.0, -3.0]),
+    ),
+    (
+        y09,  # Zero gradient + starting point at lower bounds, no displacement
+        (jnp.array([0.0, -jnp.inf]), jnp.array([3.0, jnp.inf])),
+        jax.grad(_wrapped_paraboloid)(y09),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y09),
+            output_structure=jax.eval_shape(lambda: y09),
+        ),
+        jnp.array([0.0, 0.0]),
+    ),
+    (
+        y10,  # Full gradient step coincides with one lower bound
+        (jnp.array([-jnp.inf, -2.0]), jnp.array([jnp.inf, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y10),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y10),
+            output_structure=jax.eval_shape(lambda: y10),
+        ),
+        jnp.array([-3.0, -2.0]),
+    ),
+    (
+        y11,  # Lower bound blocks y2, but not y1
+        (jnp.array([1.0, 1.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y11),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y11),
+            output_structure=jax.eval_shape(lambda: y11),
+        ),
+        jnp.array([1.5, 1.0]),
+    ),
+    (
+        y12,  # Full gradient step possible (direction flipped w.r.t. earlier case)
+        (jnp.array([-2.0, -2.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y12),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y12),
+            output_structure=jax.eval_shape(lambda: y12),
+        ),
+        jnp.array([1.0, 1.0]),
+    ),
+    (
+        y13,  # Satring point at lower bounds, upper bounds block full gradient step
+        (jnp.array([-2.0, -2.0]), jnp.array([-0.5, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y13),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y13),
+            output_structure=jax.eval_shape(lambda: y13),
+        ),
+        jnp.array([-0.5, -0.5]),
+    ),
+    (
+        y14,  # Lower bound blocking, gradient pointing outside the feasible set
+        (jnp.array([1.0, 1.0]), jnp.array([3.0, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y14),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y14),
+            output_structure=jax.eval_shape(lambda: y14),
+        ),
+        jnp.array([1.0, 1.0]),
+    ),
+    (
+        y15,  # Lower bound blocking, gradient pointing outside, w/ nonfinite bounds
+        (jnp.array([-jnp.inf, 1.0]), jnp.array([jnp.inf, 3.0])),
+        jax.grad(_wrapped_paraboloid)(y15),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y15),
+            output_structure=jax.eval_shape(lambda: y15),
+        ),
+        jnp.array([1.0, 1.0]),
+    ),
+    (
+        y16,  # 1D, lower bound blocking
+        (jnp.array(0.0), jnp.array(2.0)),
+        jax.grad(_wrapped_paraboloid)(y16),
+        lx.PyTreeLinearOperator(
+            jax.hessian(_wrapped_paraboloid)(y16),
+            output_structure=jax.eval_shape(lambda: y16),
+        ),
+        jnp.array(0.0),
     ),
 )

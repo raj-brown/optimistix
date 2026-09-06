@@ -15,12 +15,13 @@ from .._custom_types import Aux, DescentState, Fn, HessianUpdateState, SearchSta
 from .._minimise import AbstractMinimiser
 from .._misc import (
     cauchy_termination,
+    default_verbose,
     filter_cond,
     lin_to_grad,
     max_norm,
     tree_dot,
     tree_full_like,
-    verbose_print,
+    tree_where,
 )
 from .._search import (
     AbstractDescent,
@@ -56,12 +57,15 @@ def _identity_pytree(pytree: PyTree[Array]) -> lx.PyTreeLinearOperator:
     eye_leaves = []
     for i1, l1 in enumerate(leaves):
         for i2, l2 in enumerate(leaves):
+            dtype = jnp.result_type(l1, l2)
             if i1 == i2:
                 eye_leaves.append(
-                    jnp.eye(jnp.size(l1)).reshape(jnp.shape(l1) + jnp.shape(l2))
+                    jnp.eye(jnp.size(l1), dtype=dtype).reshape(
+                        jnp.shape(l1) + jnp.shape(l2)
+                    )
                 )
             else:
-                eye_leaves.append(jnp.zeros(jnp.shape(l1) + jnp.shape(l2)))
+                eye_leaves.append(jnp.zeros(jnp.shape(l1) + jnp.shape(l2), dtype=dtype))
 
     # This has a Lineax positive_semidefinite tag. This is okay because the BFGS update
     # preserves positive-definiteness.
@@ -115,7 +119,7 @@ class AbstractQuasiNewton(
 
     Alternative flavors of quasi-Newton approximations may be implemented by subclassing
     `AbstractQuasiNewton` and providing implementations for the abstract methods
-    `update_init` and `update_call`. The former is called to initialize the Hessian
+    `init_hessian` and `update_hessian`. The former is called to initialize the Hessian
     structure and the Hessian update state, while the latter is called to compute an
     update to the approximation of the Hessian or the inverse Hessian.
 
@@ -137,7 +141,7 @@ class AbstractQuasiNewton(
     use_inverse: AbstractVar[bool]
     descent: AbstractVar[AbstractDescent[Y, _Hessian, Any]]
     search: AbstractVar[AbstractSearch[Y, _Hessian, FunctionInfo.Eval, Any]]
-    verbose: AbstractVar[frozenset[str]]
+    verbose: AbstractVar[Callable[..., None]]
 
     @abc.abstractmethod
     def init_hessian(
@@ -224,7 +228,7 @@ class AbstractQuasiNewton(
         )
 
         def accepted(descent_state):
-            grad = lin_to_grad(lin_fn, state.y_eval, autodiff_mode=autodiff_mode)
+            grad = lin_to_grad(lin_fn, state.y_eval, autodiff_mode, f_eval.dtype)
 
             f_eval_info, hessian_update_state = self.update_hessian(
                 y,
@@ -271,19 +275,13 @@ class AbstractQuasiNewton(
             accept, accepted, rejected, state.descent_state
         )
 
-        if len(self.verbose) > 0:
-            verbose_loss = "loss" in self.verbose
-            verbose_step_size = "step_size" in self.verbose
-            verbose_y = "y" in self.verbose
-            loss_eval = f_eval
-            loss = state.f_info.f
-            verbose_print(
-                (verbose_loss, "Loss on this step", loss_eval),
-                (verbose_loss, "Loss on the last accepted step", loss),
-                (verbose_step_size, "Step size", step_size),
-                (verbose_y, "y", state.y_eval),
-                (verbose_y, "y on the last accepted step", y),
-            )
+        self.verbose(
+            loss_this_step=("Loss on this step", f_eval),
+            loss_last_accepted_step=("Loss on the last accepted step", state.f_info.f),
+            step_size=("Step size", step_size),
+            y=("y", state.y_eval),
+            y_last_accepted_step=("y on the last accepted step", y),
+        )
 
         y_descent, descent_result = self.descent.step(step_size, descent_state)
         y_eval = (y**ω + y_descent**ω).ω
@@ -291,6 +289,7 @@ class AbstractQuasiNewton(
             search_result == RESULTS.successful, descent_result, search_result
         )
 
+        prev_aux = tree_where(state.first_step, aux, state.aux)
         state = _QuasiNewtonState(
             first_step=jnp.array(False),
             y_eval=y_eval,
@@ -303,7 +302,7 @@ class AbstractQuasiNewton(
             num_accepted_steps=state.num_accepted_steps + jnp.where(accept, 1, 0),
             hessian_update_state=hessian_update_state,
         )
-        return y, state, aux
+        return y, state, prev_aux
 
     def terminate(
         self,
@@ -445,7 +444,7 @@ class BFGS(AbstractBFGS[Y, Aux, _Hessian]):
     use_inverse: bool
     descent: NewtonDescent
     search: BacktrackingArmijo
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -453,7 +452,7 @@ class BFGS(AbstractBFGS[Y, Aux, _Hessian]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         use_inverse: bool = True,
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
@@ -462,7 +461,7 @@ class BFGS(AbstractBFGS[Y, Aux, _Hessian]):
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
         # TODO(raderj): switch out `BacktrackingArmijo` with a better line search.
         self.search = BacktrackingArmijo()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 BFGS.__init__.__doc__ = """**Arguments:**
@@ -481,12 +480,13 @@ BFGS.__init__.__doc__ = """**Arguments:**
     sparse Hessians (as the inverse may be dense). Option (b) is generally cheaper for
     dense Hessians (as matrix-vector products are cheaper than linear solves). The
     default is (b), denoted via `use_inverse=True`. Note that this is incompatible with
-    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian 
+    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian
     approximation `B` as part of their computations.
-- `verbose`: Whether to print out extra information about how the solve is
-    proceeding. Should be a frozenset of strings, specifying what information to print.
-    Valid entries are `step_size`, `loss`, `y`. For example
-    `verbose=frozenset({"step_size", "loss"})`.
+- `verbose`: Whether to print out extra information about how the solve is proceeding.
+    Can either be `False` to print out nothing, or `True` to print out all information,
+    or (for customisation) a callable `**kwargs -> None`. If provided as a callable then
+    each value will be a 2-tuple of `(str, jax.Array)` providing a human-readable name
+    and its corresponding value.
 """
 
 
@@ -606,7 +606,7 @@ class DFP(AbstractDFP[Y, Aux, _Hessian]):
     use_inverse: bool
     descent: NewtonDescent
     search: BacktrackingArmijo
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -614,7 +614,7 @@ class DFP(AbstractDFP[Y, Aux, _Hessian]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         use_inverse: bool = True,
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
@@ -622,7 +622,7 @@ class DFP(AbstractDFP[Y, Aux, _Hessian]):
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
         self.search = BacktrackingArmijo()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 DFP.__init__.__doc__ = """**Arguments:**
@@ -641,12 +641,13 @@ DFP.__init__.__doc__ = """**Arguments:**
     sparse Hessians (as the inverse may be dense). Option (b) is generally cheaper for
     dense Hessians (as matrix-vector products are cheaper than linear solves). The
     default is (b), denoted via `use_inverse=True`. Note that this is incompatible with
-    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian 
+    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian
     approximation `B` as part of their computations.
-- `verbose`: Whether to print out extra information about how the solve is
-    proceeding. Should be a frozenset of strings, specifying what information to print.
-    Valid entries are `step_size`, `loss`, `y`. For example
-    `verbose=frozenset({"step_size", "loss"})`.
+- `verbose`: Whether to print out extra information about how the solve is proceeding.
+    Can either be `False` to print out nothing, or `True` to print out all information,
+    or (for customisation) a callable `**kwargs -> None`. If provided as a callable then
+    each value will be a 2-tuple of `(str, jax.Array)` providing a human-readable name
+    and its corresponding value.
 """
 
 
@@ -793,7 +794,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
     use_inverse: bool
     descent: NewtonDescent
     search: Zoom  # BacktrackingArmijo
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -801,7 +802,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         use_inverse: bool = True,
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
@@ -811,7 +812,7 @@ class SSBFGS(AbstractSSBFGS[Y, Aux, _Hessian]):
         self.search = Zoom(
             initial_guess_strategy="one"
         )  # LinearTrustRegion()  # BacktrackingArmijo()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 SSBFGS.__init__.__doc__ = """**Arguments:**
@@ -830,7 +831,7 @@ SSBFGS.__init__.__doc__ = """**Arguments:**
     sparse Hessians (as the inverse may be dense). Option (b) is generally cheaper for
     dense Hessians (as matrix-vector products are cheaper than linear solves). The
     default is (b), denoted via `use_inverse=True`. Note that this is incompatible with
-    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian 
+    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian
     approximation `B` as part of their computations.
 - `verbose`: Whether to print out extra information about how the solve is
     proceeding. Should be a frozenset of strings, specifying what information to print.
@@ -1096,7 +1097,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
     use_inverse: bool
     descent: NewtonDescent
     search: BacktrackingArmijo
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -1104,7 +1105,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         use_inverse: bool = True,
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
@@ -1112,7 +1113,7 @@ class SSBroyden(AbstractSSBroyden[Y, Aux, _Hessian]):
         self.use_inverse = use_inverse
         self.descent = NewtonDescent(linear_solver=lx.Cholesky())
         self.search = BacktrackingArmijo()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 SSBroyden.__init__.__doc__ = """**Arguments:**
@@ -1131,7 +1132,7 @@ SSBroyden.__init__.__doc__ = """**Arguments:**
     sparse Hessians (as the inverse may be dense). Option (b) is generally cheaper for
     dense Hessians (as matrix-vector products are cheaper than linear solves). The
     default is (b), denoted via `use_inverse=True`. Note that this is incompatible with
-    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian 
+    searches like [`optimistix.ClassicalTrustRegion`][], which use the Hessian
     approximation `B` as part of their computations.
 - `verbose`: Whether to print out extra information about how the solve is
     proceeding. Should be a frozenset of strings, specifying what information to print.

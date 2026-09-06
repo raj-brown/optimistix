@@ -11,7 +11,7 @@ from equinox.internal import ω
 from jaxtyping import Array, Float, PyTree, Scalar, ScalarLike
 
 from .._custom_types import Aux, Out, Y
-from .._misc import max_norm, tree_full_like, two_norm
+from .._misc import default_verbose, max_norm, tree_full_like, two_norm
 from .._root_find import AbstractRootFinder, root_find
 from .._search import AbstractDescent, FunctionInfo
 from .._solution import RESULTS
@@ -241,7 +241,7 @@ class IndirectDampedNewtonDescent(
         return (-(neg_y_diff**ω)).ω, new_result
 
 
-IndirectDampedNewtonDescent.__init__.__doc__ = """**Arguments:**    
+IndirectDampedNewtonDescent.__init__.__doc__ = """**Arguments:**
 
 - `lambda_0`: The initial value of the Levenberg--Marquardt parameter used in the root-
     find to hit the trust-region radius. If `IndirectDampedNewtonDescent` is failing,
@@ -276,7 +276,7 @@ class LevenbergMarquardt(AbstractGaussNewton[Y, Out, Aux]):
     norm: Callable[[PyTree], Scalar]
     descent: DampedNewtonDescent[Y]
     search: ClassicalTrustRegion[Y]
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -284,30 +284,31 @@ class LevenbergMarquardt(AbstractGaussNewton[Y, Out, Aux]):
         atol: float,
         norm: Callable[[PyTree], Scalar] = max_norm,
         linear_solver: lx.AbstractLinearSolver = lx.QR(),
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
         self.norm = norm
         self.descent = DampedNewtonDescent(linear_solver=linear_solver)
         self.search = ClassicalTrustRegion()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 LevenbergMarquardt.__init__.__doc__ = """**Arguments:**
 
 - `rtol`: Relative tolerance for terminating the solve.
 - `atol`: Absolute tolerance for terminating the solve.
-- `norm`: The norm used to determine the difference between two iterates in the 
+- `norm`: The norm used to determine the difference between two iterates in the
     convergence criteria. Should be any function `PyTree -> Scalar`. Optimistix
     includes three built-in norms: [`optimistix.max_norm`][],
     [`optimistix.rms_norm`][], and [`optimistix.two_norm`][].
 - `linear_solver`: The linear solver to use to solve the damped Newton step. Defaults to
     `lineax.QR`.
 - `verbose`: Whether to print out extra information about how the solve is proceeding.
-    Should be a frozenset of strings, specifying what information to print out. Valid
-    entries are `step`, `loss`, `accepted`, `step_size`, `y`. For example
-    `verbose=frozenset({"loss", "step_size"})`.
+    Can either be `False` to print out nothing, or `True` to print out all information,
+    or (for customisation) a callable `**kwargs -> None`. If provided as a callable then
+    each value will be a 2-tuple of `(str, jax.Array)` providing a human-readable name
+    and its corresponding value.
 """
 
 
@@ -335,7 +336,7 @@ class IndirectLevenbergMarquardt(AbstractGaussNewton[Y, Out, Aux]):
     norm: Callable[[PyTree], Scalar]
     descent: IndirectDampedNewtonDescent[Y]
     search: ClassicalTrustRegion[Y]
-    verbose: frozenset[str]
+    verbose: Callable[..., None]
 
     def __init__(
         self,
@@ -345,7 +346,7 @@ class IndirectLevenbergMarquardt(AbstractGaussNewton[Y, Out, Aux]):
         lambda_0: ScalarLike = 1.0,
         linear_solver: lx.AbstractLinearSolver = lx.AutoLinearSolver(well_posed=False),
         root_finder: AbstractRootFinder = Newton(rtol=0.01, atol=0.01),
-        verbose: frozenset[str] = frozenset(),
+        verbose: bool | Callable[..., None] = False,
     ):
         self.rtol = rtol
         self.atol = atol
@@ -356,14 +357,14 @@ class IndirectLevenbergMarquardt(AbstractGaussNewton[Y, Out, Aux]):
             root_finder=root_finder,
         )
         self.search = ClassicalTrustRegion()
-        self.verbose = verbose
+        self.verbose = default_verbose(verbose)
 
 
 IndirectLevenbergMarquardt.__init__.__doc__ = """**Arguments:**
-    
+
 - `rtol`: Relative tolerance for terminating the solve.
 - `atol`: Absolute tolerance for terminating the solve.
-- `norm`: The norm used to determine the difference between two iterates in the 
+- `norm`: The norm used to determine the difference between two iterates in the
     convergence criteria. Should be any function `PyTree -> Scalar`. Optimistix
     includes three built-in norms: [`optimistix.max_norm`][],
     [`optimistix.rms_norm`][], and [`optimistix.two_norm`][].
@@ -374,7 +375,8 @@ IndirectLevenbergMarquardt.__init__.__doc__ = """**Arguments:**
 - `root_finder`: The root finder used to find the Levenberg--Marquardt parameter which
     hits the trust-region radius.
 - `verbose`: Whether to print out extra information about how the solve is proceeding.
-    Should be a frozenset of strings, specifying what information to print out. Valid
-    entries are `step`, `loss`, `accepted`, `step_size`, `y`. For example
-    `verbose=frozenset({"loss", "step_size"})`.
+    Can either be `False` to print out nothing, or `True` to print out all information,
+    or (for customisation) a callable `**kwargs -> None`. If provided as a callable then
+    each value will be a 2-tuple of `(str, jax.Array)` providing a human-readable name
+    and its corresponding value.
 """

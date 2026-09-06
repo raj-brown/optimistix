@@ -6,12 +6,12 @@ This library provides two quasi-Newton optimizers — **SSBFGS** and **SSBroyden
 
 # Installation
 
-The package requires Python 3.10 or newer. A virtual environment is recommended.
+The package requires Python 3.11 or newer. A virtual environment is recommended.
 
-## Install from the SSBFGS branch
+## Install from the main branch
 
 ```bash
-git clone -b SSBFGS https://github.com/raj-brown/optimistix.git
+git clone https://github.com/raj-brown/optimistix.git
 cd optimistix
 python3 -m venv .venv
 source .venv/bin/activate
@@ -19,8 +19,9 @@ python -m pip install --upgrade pip
 python -m pip install -e '.[dev,tests]'
 ```
 
-This installs the package in editable mode together with the development tools and
-test dependencies. The default JAX installation uses the CPU backend.
+Requires Python 3.11+. This installs the package in editable mode together with the
+development tools and test dependencies. The default JAX installation uses the CPU
+backend.
 
 ## Install the published package
 
@@ -117,14 +118,11 @@ https://www.sciencedirect.com/science/article/pii/S0045782525005808
 Please also cite the original Optimistix library:
 
 ```bibtex
-@article{optimistix2024,
   title={Optimistix: modular optimisation in JAX and Equinox},
   author={Rader, Jason and Lyons, Terry and Kidger, Patrick},
   journal={arXiv:2402.09983},
-  year={2024}
-}
-```
-
+Optimistix is also co-maintained by Johanna Haffner (@johannahaffner):
+[GitHub](https://github.com/johannahaffner); [Website](https://haffner.dev).
 arXiv: https://arxiv.org/abs/2402.09983
 
 ---
@@ -136,3 +134,5 @@ Optimistix was primarily developed by Jason Rader (@packquickly).
 - GitHub: https://github.com/packquickly
 - Website: https://www.packquickly.com/
 - Twitter/X: https://twitter.com/packquickly
+Optimistix is also co-maintained by Johanna Haffner (@johannahaffner):
+[GitHub](https://github.com/johannahaffner); [Website](https://haffner.dev).

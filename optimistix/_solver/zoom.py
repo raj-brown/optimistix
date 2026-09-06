@@ -782,7 +782,10 @@ class Zoom(AbstractSearch[Y, _FnInfo, _FnEvalInfo, ZoomState]):
             jax.debug.print("Linesearch regular iter: {}", state.ls_iter_num)
 
         y_eval_grad = lin_to_grad(
-            lin_fn, y_eval, autodiff_mode=options.get("autodiff_mode", "bwd")
+            lin_fn,
+            y_eval,
+            autodiff_mode=options.get("autodiff_mode", "bwd"),
+            dtype=f_eval_info.f.dtype,
         )
 
         _zoom_fn = ft.partial(
