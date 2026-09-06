@@ -60,6 +60,7 @@ from ._solver import (
     DFP as DFP,
     Dogleg as Dogleg,
     DoglegDescent as DoglegDescent,
+    DSGNAR as DSGNAR,
     FixedPointIteration as FixedPointIteration,
     fletcher_reeves as fletcher_reeves,
     GaussNewton as GaussNewton,
