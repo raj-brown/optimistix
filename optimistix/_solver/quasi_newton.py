@@ -83,6 +83,23 @@ def _outer(tree1, tree2):
     return jtu.tree_map(leaf_fn, tree1)
 
 
+def _taken_step_length(y_diff, prev_grad, f_info, use_inverse: bool):
+    """Step length `alpha` of the accepted step `y_diff = alpha * p`, where
+    `p = -H grad` (or `-B^{-1} grad`) is the quasi-Newton direction it was taken along.
+
+    Needed for `b_k = s^T B s / s^T y = -alpha s^T grad / s^T y` (Kiyani et al. 2025,
+    Eq. (5)). The `step_size` argument of `update_hessian` cannot be used for this: it
+    is the search's proposal for the next step (1.0 after acceptance for `Zoom` with
+    `initial_guess_strategy="one"` and for `BacktrackingArmijo`).
+    """
+    if use_inverse:
+        p = (-(f_info.hessian_inv.mv(prev_grad) ** ω)).ω
+    else:
+        p = (-(lx.linear_solve(f_info.hessian, prev_grad).value ** ω)).ω
+    pp = tree_dot(p, p)
+    return tree_dot(p, y_diff) / jnp.where(pp > 0, pp, 1.0)
+
+
 class _QuasiNewtonState(
     eqx.Module,
     Generic[Y, Aux, SearchState, DescentState, _Hessian, HessianUpdateState],
@@ -716,8 +733,10 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 t = (t2**ω - t1**ω / mvp_inner).ω
                 t3 = (diff_outer**ω / inner).ω
                 term3 = tree_dot(grad_diff, y_diff)
-                term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
+                # alpha of the step just taken (y_diff = alpha * p). Note: `step_size`
+                # is the search's proposal for the *next* step, not this alpha.
+                alpha = _taken_step_length(y_diff, prev_grad, f_info, self.use_inverse)
+                term4 = alpha * tree_dot(y_diff, prev_grad)
                 tau_k_val = -term3 / term4
                 tau_k = jax.lax.cond(
                     tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
@@ -737,8 +756,10 @@ class AbstractSSBFGS(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 term1 = (_outer(grad_diff, grad_diff) ** ω / inner).ω
                 term2 = (_outer(mvp, mvp) ** ω / tree_dot(y_diff, mvp)).ω
                 term3 = tree_dot(grad_diff, y_diff)
-                term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
+                # alpha of the step just taken (y_diff = alpha * p). Note: `step_size`
+                # is the search's proposal for the *next* step, not this alpha.
+                alpha = _taken_step_length(y_diff, prev_grad, f_info, self.use_inverse)
+                term4 = alpha * tree_dot(y_diff, prev_grad)
                 tau_k_val = -term3 / term4
                 tau_k = jax.lax.cond(
                     tau_k_val < 1.0, lambda x: x, lambda _: 1.0, tau_k_val
@@ -904,8 +925,10 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
                 t2 = _outer(v_k, v_k)
                 t3 = (diff_outer**ω / inner).ω
                 term3 = tree_dot(grad_diff, y_diff)
-                term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
+                # alpha of the step just taken (y_diff = alpha * p). Note: `step_size`
+                # is the search's proposal for the *next* step, not this alpha.
+                alpha = _taken_step_length(y_diff, prev_grad, f_info, self.use_inverse)
+                term4 = alpha * tree_dot(y_diff, prev_grad)
                 tau_k_val = -term3 / term4
 
                 ### b_k
@@ -985,8 +1008,10 @@ class AbstractSSBroyden(AbstractQuasiNewton[Y, Aux, _Hessian, None]):
 
                 # Compute \tau_{k^1}
                 term3 = tree_dot(grad_diff, y_diff)
-                term4 = tree_dot(y_diff, prev_grad)
-                term4 = jax.tree_util.tree_map(lambda x: x * step_size, term4)
+                # alpha of the step just taken (y_diff = alpha * p). Note: `step_size`
+                # is the search's proposal for the *next* step, not this alpha.
+                alpha = _taken_step_length(y_diff, prev_grad, f_info, self.use_inverse)
+                term4 = alpha * tree_dot(y_diff, prev_grad)
                 tau_k_val = -term3 / term4
                 ### b_k
                 b_k = 1 / tau_k_val
